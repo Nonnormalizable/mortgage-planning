@@ -25,6 +25,7 @@ from src.monte_carlo import (
     calculate_simulation_statistics,
     generate_fan_chart_data,
     compare_arm_vs_fixed_monte_carlo,
+    simulate_arm_vs_refinance_monte_carlo,
 )
 from src.export import (
     Scenario,
@@ -46,6 +47,8 @@ from components.inputs import (
     extra_payment_input,
     monte_carlo_input_form,
     current_loan_status_input,
+    shotwell_arm_input_form,
+    shotwell_refinance_params_form,
 )
 from components.tables import (
     display_amortization_table,
@@ -62,6 +65,8 @@ from components.charts import (
     create_monte_carlo_fan_chart,
     create_monte_carlo_histogram,
     create_arm_vs_fixed_comparison_chart,
+    create_cost_distribution_comparison_chart,
+    create_cumulative_cost_fan_chart,
 )
 
 # Page configuration
@@ -108,20 +113,42 @@ def main():
             "Refinance Comparison",
             "Payoff Strategies",
             "Monte Carlo Simulation",
+            "Shotwell Refinance",
             "Data Management",
         ],
     )
 
     st.sidebar.divider()
 
-    # Quick info
+    # Quick Reference - Expandable sections
     st.sidebar.markdown("### Quick Reference")
-    st.sidebar.markdown("""
-    - **Amortization**: How loans are paid off over time
-    - **ARM**: Adjustable Rate Mortgage - rate changes after initial period
-    - **Break-even**: When refinance savings exceed costs
-    - **Monte Carlo**: Probabilistic simulation of future scenarios
-    """)
+    with st.sidebar.expander("Amortization"):
+        st.markdown("""
+        **How loans are paid off over time.**
+
+        Each monthly payment is split between principal and interest. Early payments are mostly interest; later payments are mostly principal. The amortization schedule shows this progression month by month.
+        """)
+    with st.sidebar.expander("ARM (Adjustable Rate Mortgage)"):
+        st.markdown("""
+        **Rate changes after an initial fixed period.**
+
+        - **Initial period**: Fixed rate for 3, 5, 7, or 10 years
+        - **Adjustment frequency**: How often rate changes (every 6 or 12 months)
+        - **Caps**: Limits on rate increases (initial, periodic, lifetime)
+        - **Index + Margin**: New rate = market index (e.g., SOFR) + lender's margin
+        """)
+    with st.sidebar.expander("Break-even"):
+        st.markdown("""
+        **When refinance savings exceed costs.**
+
+        Divide total refinance costs by monthly savings to find how many months until you recover your investment. If you plan to stay longer than the break-even point, refinancing may make sense.
+        """)
+    with st.sidebar.expander("Monte Carlo"):
+        st.markdown("""
+        **Probabilistic simulation of future scenarios.**
+
+        Runs thousands of simulations with random interest rate paths to show the range of possible outcomes. Results show confidence intervals (e.g., 90% of outcomes fall within this range) and percentiles.
+        """)
 
     # Route to appropriate page
     if page == "Mortgage Calculator":
@@ -134,6 +161,8 @@ def main():
         payoff_page()
     elif page == "Monte Carlo Simulation":
         monte_carlo_page()
+    elif page == "Shotwell Refinance":
+        shotwell_refinance_page()
     elif page == "Data Management":
         data_management_page()
 
@@ -214,6 +243,7 @@ def arm_analysis_page():
                 max_value=15.0,
                 value=6.5,
                 step=0.125,
+                format="%.3f",
             )
 
     with col2:
@@ -253,7 +283,7 @@ def arm_analysis_page():
                     st.markdown("**Worst Case** (all caps hit)")
                     st.metric("Total Interest", f"${worst['total_interest']:,.2f}")
                     st.metric("Maximum Payment", f"${worst['max_payment']:,.2f}")
-                    st.metric("Maximum Rate", f"{worst['max_rate']:.2%}")
+                    st.metric("Maximum Rate", f"{worst['max_rate']:.3%}")
 
             with tab3:
                 comparison = compare_arm_to_fixed(arm, fixed_rate / 100)
@@ -379,13 +409,13 @@ def payoff_page():
                     with col_b:
                         st.metric(
                             "Interest Saved",
-                            f"${summary['interest_saved']:,.0f}",
+                            f"${summary['interest_saved']:,.2f}",
                         )
 
                     with col_c:
                         st.metric(
                             "ROI on Extra Payments",
-                            f"{summary['roi_on_extra']:.0f}%",
+                            f"{summary['roi_on_extra']:.2f}%",
                             help="Interest saved per dollar of extra payments",
                         )
 
@@ -431,6 +461,7 @@ def monte_carlo_page():
                 max_value=15.0,
                 value=6.5,
                 step=0.125,
+                format="%.3f",
                 key="mc_fixed_rate",
             )
 
@@ -485,29 +516,192 @@ def monte_carlo_page():
                 with col_a:
                     st.metric(
                         "Probability ARM Saves Money",
-                        f"{comparison['probability_arm_saves_money']:.1%}",
+                        f"{comparison['probability_arm_saves_money']:.3%}",
                     )
                     st.metric(
                         "Expected Savings with ARM",
-                        f"${comparison['expected_savings_with_arm']:,.0f}",
+                        f"${comparison['expected_savings_with_arm']:,.2f}",
                     )
 
                 with col_b:
                     st.metric(
                         "ARM Max Payment (95th percentile)",
-                        f"${comparison['arm_max_payment_p95']:,.0f}",
+                        f"${comparison['arm_max_payment_p95']:,.2f}",
                     )
                     st.metric(
                         "Fixed Payment",
-                        f"${comparison['fixed_payment']:,.0f}",
+                        f"${comparison['fixed_payment']:,.2f}",
                     )
 
                 st.markdown(f"""
                 **Analysis Summary:**
-                - There is a **{comparison['probability_arm_saves_money']:.1%}** chance the ARM will cost less than the {fixed_rate}% fixed rate.
-                - In the best 5% of scenarios, you save at least **${comparison['savings_p95']:,.0f}** with the ARM.
-                - In the worst 5% of scenarios, the ARM costs **${-comparison['savings_p5']:,.0f}** more than fixed.
+                - There is a **{comparison['probability_arm_saves_money']:.3%}** chance the ARM will cost less than the {fixed_rate}% fixed rate.
+                - In the best 5% of scenarios, you save at least **${comparison['savings_p95']:,.2f}** with the ARM.
+                - In the worst 5% of scenarios, the ARM costs **${-comparison['savings_p5']:,.2f}** more than fixed.
                 """)
+
+
+def shotwell_refinance_page():
+    """Shotwell Refinance comparison: ARM vs Refinance to Fixed."""
+    st.header("Shotwell Refinance Analysis")
+
+    st.markdown("""
+    Compare two mortgage strategies for the Shotwell 7/6 ARM:
+    1. **Stay in ARM** for the full term (with Monte Carlo simulation for rate uncertainty)
+    2. **Refinance to Fixed** at a specified point in time
+    """)
+
+    # Top: Input Section (two columns)
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.subheader("7/6 ARM Parameters")
+        arm = shotwell_arm_input_form()
+
+        if arm:
+            st.divider()
+            st.subheader("Monte Carlo Parameters")
+            sim_params = monte_carlo_input_form(key_prefix="shotwell_mc")
+
+    with col_right:
+        st.subheader("Refinance Parameters")
+        if arm:
+            refi_params = shotwell_refinance_params_form(
+                arm_term_months=arm.term_months,
+                key_prefix="shotwell_refi"
+            )
+
+            st.divider()
+            run_comparison = st.button("Run Comparison", type="primary", use_container_width=True)
+        else:
+            st.info("Configure ARM parameters first.")
+            run_comparison = False
+            refi_params = None
+
+    # Results section
+    if arm and refi_params and run_comparison:
+        with st.spinner("Running Monte Carlo simulation..."):
+            # Run simulation
+            results = simulate_arm_vs_refinance_monte_carlo(
+                arm_params=arm,
+                refinance_month=refi_params['refinance_month'],
+                fixed_rate=refi_params['fixed_rate'],
+                fixed_term_months=refi_params['term_months'],
+                refinance_costs=refi_params['refinance_costs'],
+                rate_sim_params=sim_params,
+            )
+
+        st.divider()
+
+        # Summary Metrics (4 columns)
+        st.subheader("Summary")
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric(
+                "Probability ARM Wins",
+                f"{results['arm_wins_probability']:.1%}",
+                help="Probability that staying in the ARM costs less than refinancing",
+            )
+
+        with col2:
+            savings_val = results['expected_arm_savings']
+            delta_color = "normal" if savings_val > 0 else "inverse"
+            st.metric(
+                "Expected ARM Savings",
+                f"${savings_val:,.0f}",
+                help="Expected savings from staying in ARM vs refinancing (positive = ARM saves money)",
+            )
+
+        with col3:
+            st.metric(
+                "ARM Max Payment (95th %ile)",
+                f"${results['arm_max_payment_p95']:,.2f}",
+                help="95th percentile of maximum monthly ARM payment across simulations",
+            )
+
+        with col4:
+            st.metric(
+                "Fixed Payment (after refi)",
+                f"${results['fixed_payment']:,.2f}",
+                help="Monthly payment after refinancing to fixed rate",
+            )
+
+        # Detailed Stats (2 columns)
+        st.subheader("Detailed Statistics")
+        col_arm, col_refi = st.columns(2)
+
+        with col_arm:
+            st.markdown("**ARM Total Cost Distribution**")
+            st.metric("Median", f"${results['arm_median_total']:,.0f}")
+            st.metric("5th Percentile (Best)", f"${results['arm_p5_total']:,.0f}")
+            st.metric("95th Percentile (Worst)", f"${results['arm_p95_total']:,.0f}")
+
+        with col_refi:
+            st.markdown("**Refinance Total Cost Distribution**")
+            st.metric("Median", f"${results['refi_median_total']:,.0f}")
+            st.metric("5th Percentile (Best)", f"${results['refi_p5_total']:,.0f}")
+            st.metric("95th Percentile (Worst)", f"${results['refi_p95_total']:,.0f}")
+
+        st.divider()
+
+        # Charts (stacked vertically)
+        st.subheader("Rate Paths")
+        fan_data = generate_fan_chart_data(results['rate_paths'])
+        fig_rates = create_monte_carlo_fan_chart(fan_data)
+        st.plotly_chart(fig_rates, use_container_width=True)
+
+        st.markdown("""
+        The fan chart shows simulated interest rate paths:
+        - **Dark band**: 50% of simulations fall within this range
+        - **Light band**: 90% of simulations fall within this range
+        """)
+
+        st.subheader("Total Cost Distribution")
+        fig_dist = create_cost_distribution_comparison_chart(
+            results['arm_total_paid'],
+            results['refi_total_paid'],
+        )
+        st.plotly_chart(fig_dist, use_container_width=True)
+
+        st.subheader("Cumulative Payments Over Time")
+        fig_cumulative = create_cumulative_cost_fan_chart(
+            results['arm_cumulative_by_month'],
+            results['refi_cumulative_by_month'],
+            results['refinance_month'],
+        )
+        st.plotly_chart(fig_cumulative, use_container_width=True)
+
+        # Interpretation text box
+        st.divider()
+        st.subheader("Interpretation")
+
+        if results['arm_wins_probability'] > 0.5:
+            outcome_text = f"""
+            **Based on the simulation, staying in the ARM is more likely to cost less than refinancing.**
+
+            - There is a **{results['arm_wins_probability']:.1%}** probability that the ARM will have lower total costs.
+            - On average, the ARM is expected to save **${results['expected_arm_savings']:,.0f}** compared to refinancing.
+            - However, the ARM carries more uncertainty - in the worst 5% of scenarios, total costs could reach **${results['arm_p95_total']:,.0f}**.
+            """
+        else:
+            outcome_text = f"""
+            **Based on the simulation, refinancing is more likely to cost less than staying in the ARM.**
+
+            - There is only a **{results['arm_wins_probability']:.1%}** probability that the ARM will have lower total costs.
+            - On average, refinancing is expected to save **${-results['expected_arm_savings']:,.0f}** compared to the ARM.
+            - Refinancing provides payment certainty with a fixed **${results['fixed_payment']:,.2f}/month** payment.
+            """
+
+        st.info(outcome_text)
+
+        st.markdown("""
+        **Key considerations:**
+        - ARM outcomes depend heavily on future interest rate movements
+        - The simulation uses the Vasicek model which assumes rates tend to revert to a long-term mean
+        - Actual market conditions may differ from model assumptions
+        - Consider your risk tolerance and financial flexibility when choosing between strategies
+        """)
 
 
 def data_management_page():

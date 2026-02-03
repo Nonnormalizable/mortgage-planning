@@ -244,6 +244,147 @@ def compare_arm_vs_fixed_monte_carlo(
     }
 
 
+def simulate_arm_vs_refinance_monte_carlo(
+    arm_params: ARMParameters,
+    refinance_month: int,
+    fixed_rate: float,
+    fixed_term_months: int,
+    refinance_costs: float,
+    rate_sim_params: RateSimulationParams,
+) -> dict:
+    """Compare staying in ARM vs refinancing to fixed at a specified point.
+
+    Args:
+        arm_params: ARM parameters for the current loan
+        refinance_month: Month at which to refinance (1-indexed)
+        fixed_rate: Interest rate for the refinanced fixed mortgage
+        fixed_term_months: Term of the refinanced mortgage in months
+        refinance_costs: One-time costs to refinance
+        rate_sim_params: Parameters for rate simulation
+
+    Returns:
+        Dictionary with distributions and comparison statistics
+    """
+    from .mortgage import Mortgage
+
+    # Ensure time horizon covers the ARM term
+    rate_sim_params.time_horizon_months = arm_params.term_months
+
+    # Generate rate paths
+    rate_paths = simulate_rate_paths(rate_sim_params)
+
+    # Determine adjustment schedule for ARM
+    adjustments_needed = []
+    month = arm_params.initial_period_months + 1
+    while month <= arm_params.term_months:
+        adjustments_needed.append(month)
+        month += arm_params.adjustment_period_months
+
+    # Results storage
+    arm_total_paid = []
+    refi_total_paid = []
+    arm_cumulative_by_month = []
+    refi_cumulative_by_month = []
+    arm_max_payments = []
+
+    for sim_idx in range(rate_sim_params.num_simulations):
+        # Extract index values at adjustment points for this simulation
+        index_values = []
+        for adj_month in adjustments_needed:
+            if adj_month - 1 < rate_paths.shape[1]:
+                index_values.append(rate_paths[sim_idx, adj_month - 1])
+            else:
+                index_values.append(rate_paths[sim_idx, -1])
+
+        # Generate full ARM schedule
+        arm_schedule, _ = generate_arm_schedule(arm_params, index_values)
+
+        # ARM path: full term
+        arm_total = arm_schedule['payment'].sum()
+        arm_total_paid.append(arm_total)
+        arm_max_payments.append(arm_schedule['payment'].max())
+
+        # Store cumulative payments for ARM (for fan chart)
+        arm_cumulative_by_month.append(arm_schedule['payment'].cumsum().values)
+
+        # Refinance path: ARM payments until refinance_month + refinance costs + fixed payments
+        arm_payments_before_refi = arm_schedule[arm_schedule['month'] < refinance_month]['payment'].sum()
+        balance_at_refi = arm_schedule[arm_schedule['month'] == refinance_month - 1]['balance'].values
+        if len(balance_at_refi) > 0:
+            balance_at_refi = balance_at_refi[0]
+        else:
+            balance_at_refi = arm_params.principal
+
+        # Fixed mortgage for remaining balance
+        fixed_mortgage = Mortgage(balance_at_refi, fixed_rate, fixed_term_months)
+        fixed_total_payments = fixed_mortgage.monthly_payment * fixed_term_months
+
+        refi_total = arm_payments_before_refi + refinance_costs + fixed_total_payments
+        refi_total_paid.append(refi_total)
+
+        # Build cumulative payments for refinance path
+        refi_cumulative = []
+        cumsum = 0.0
+        for m in range(1, arm_params.term_months + 1):
+            if m < refinance_month:
+                # Still in ARM
+                cumsum += arm_schedule[arm_schedule['month'] == m]['payment'].values[0]
+            elif m == refinance_month:
+                # Refinance happens - add costs
+                cumsum += refinance_costs + fixed_mortgage.monthly_payment
+            elif m <= refinance_month + fixed_term_months - 1:
+                # In fixed mortgage
+                cumsum += fixed_mortgage.monthly_payment
+            # After fixed mortgage is paid off, no more payments
+            refi_cumulative.append(cumsum)
+        refi_cumulative_by_month.append(refi_cumulative)
+
+    # Convert to numpy arrays
+    arm_total_paid = np.array(arm_total_paid)
+    refi_total_paid = np.array(refi_total_paid)
+    arm_max_payments = np.array(arm_max_payments)
+    arm_cumulative_by_month = np.array(arm_cumulative_by_month)
+    refi_cumulative_by_month = np.array(refi_cumulative_by_month)
+
+    # Calculate comparison stats
+    arm_wins = arm_total_paid < refi_total_paid
+    arm_wins_probability = float(np.mean(arm_wins))
+    expected_arm_savings = float(np.mean(refi_total_paid - arm_total_paid))
+
+    # Fixed payment for display
+    # Use median balance at refinance for representative fixed payment
+    median_balance = float(np.median([
+        arm_cumulative_by_month[i][refinance_month - 2] if refinance_month > 1 else arm_params.principal
+        for i in range(len(arm_cumulative_by_month))
+    ]))
+    # Actually use balance from schedule - simpler approach
+    sample_schedule, _ = generate_arm_schedule(arm_params, [rate_sim_params.current_rate] * 50)
+    if refinance_month > 1:
+        sample_balance = sample_schedule[sample_schedule['month'] == refinance_month - 1]['balance'].values[0]
+    else:
+        sample_balance = arm_params.principal
+    fixed_mortgage_sample = Mortgage(sample_balance, fixed_rate, fixed_term_months)
+
+    return {
+        'arm_total_paid': arm_total_paid,
+        'refi_total_paid': refi_total_paid,
+        'arm_wins_probability': arm_wins_probability,
+        'expected_arm_savings': expected_arm_savings,
+        'arm_max_payment_p95': float(np.percentile(arm_max_payments, 95)),
+        'fixed_payment': float(fixed_mortgage_sample.monthly_payment),
+        'arm_median_total': float(np.median(arm_total_paid)),
+        'arm_p5_total': float(np.percentile(arm_total_paid, 5)),
+        'arm_p95_total': float(np.percentile(arm_total_paid, 95)),
+        'refi_median_total': float(np.median(refi_total_paid)),
+        'refi_p5_total': float(np.percentile(refi_total_paid, 5)),
+        'refi_p95_total': float(np.percentile(refi_total_paid, 95)),
+        'arm_cumulative_by_month': arm_cumulative_by_month,
+        'refi_cumulative_by_month': refi_cumulative_by_month,
+        'rate_paths': rate_paths,
+        'refinance_month': refinance_month,
+    }
+
+
 def run_sensitivity_analysis(
     arm_params: ARMParameters,
     base_sim_params: RateSimulationParams,

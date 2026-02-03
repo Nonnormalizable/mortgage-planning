@@ -268,7 +268,7 @@ def create_monte_carlo_fan_chart(fan_data: pd.DataFrame) -> go.Figure:
         y=fan_data['p50'],
         name='Median',
         line=dict(color='#1f77b4', width=2),
-        hovertemplate='Month %{x}<br>Rate: %{y:.2%}<extra></extra>',
+        hovertemplate='Month %{x}<br>Rate: %{y:.3%}<extra></extra>',
     ))
 
     # Mean line
@@ -277,7 +277,7 @@ def create_monte_carlo_fan_chart(fan_data: pd.DataFrame) -> go.Figure:
         y=fan_data['mean'],
         name='Mean',
         line=dict(color='#d62728', width=2, dash='dash'),
-        hovertemplate='Month %{x}<br>Rate: %{y:.2%}<extra></extra>',
+        hovertemplate='Month %{x}<br>Rate: %{y:.3%}<extra></extra>',
     ))
 
     fig.update_layout(
@@ -285,7 +285,7 @@ def create_monte_carlo_fan_chart(fan_data: pd.DataFrame) -> go.Figure:
         xaxis_title='Month',
         yaxis_title='Interest Rate',
         hovermode='x unified',
-        yaxis=dict(tickformat='.1%'),
+        yaxis=dict(tickformat='.3%', range=[0, 0.10]),
         legend=dict(
             yanchor='top',
             y=0.99,
@@ -370,7 +370,7 @@ def create_arm_vs_fixed_comparison_chart(
         name='ARM Rate',
         line=dict(color='#d62728', width=1, dash='dot'),
         yaxis='y2',
-        hovertemplate='Month %{x}<br>Rate: %{y:.2f}%<extra></extra>',
+        hovertemplate='Month %{x}<br>Rate: %{y:.3f}%<extra></extra>',
     ))
 
     fig.update_layout(
@@ -384,9 +384,174 @@ def create_arm_vs_fixed_comparison_chart(
             title='Interest Rate (%)',
             overlaying='y',
             side='right',
-            tickformat='.1f',
+            tickformat='.3f',
+            range=[0, 10],
         ),
         hovermode='x unified',
+        legend=dict(
+            yanchor='top',
+            y=0.99,
+            xanchor='left',
+            x=0.01,
+        ),
+    )
+
+    return fig
+
+
+def create_cost_distribution_comparison_chart(
+    arm_total_paid: np.ndarray,
+    refi_total_paid: np.ndarray,
+) -> go.Figure:
+    """Create overlaid histograms showing total cost distributions for ARM vs Refinance.
+
+    Args:
+        arm_total_paid: Array of total ARM costs across simulations
+        refi_total_paid: Array of total refinance costs across simulations
+
+    Returns:
+        Plotly figure with overlaid histograms
+    """
+    fig = go.Figure()
+
+    # ARM distribution
+    fig.add_trace(go.Histogram(
+        x=arm_total_paid,
+        name='ARM (Stay)',
+        marker_color='rgba(31, 119, 180, 0.6)',
+        nbinsx=50,
+        hovertemplate='ARM Total: $%{x:,.0f}<br>Count: %{y}<extra></extra>',
+    ))
+
+    # Refinance distribution
+    fig.add_trace(go.Histogram(
+        x=refi_total_paid,
+        name='Refinance to Fixed',
+        marker_color='rgba(44, 160, 44, 0.6)',
+        nbinsx=50,
+        hovertemplate='Refi Total: $%{x:,.0f}<br>Count: %{y}<extra></extra>',
+    ))
+
+    # Add median lines
+    arm_median = np.median(arm_total_paid)
+    refi_median = np.median(refi_total_paid)
+
+    fig.add_vline(
+        x=arm_median,
+        line_dash='dash',
+        line_color='#1f77b4',
+        annotation_text=f'ARM Median: ${arm_median:,.0f}',
+        annotation_position='top left',
+    )
+
+    fig.add_vline(
+        x=refi_median,
+        line_dash='dash',
+        line_color='#2ca02c',
+        annotation_text=f'Refi Median: ${refi_median:,.0f}',
+        annotation_position='top right',
+    )
+
+    fig.update_layout(
+        title='Total Cost Distribution: ARM vs Refinance',
+        xaxis_title='Total Payments ($)',
+        yaxis_title='Count',
+        barmode='overlay',
+        xaxis=dict(tickformat='$,.0f'),
+        legend=dict(
+            yanchor='top',
+            y=0.99,
+            xanchor='right',
+            x=0.99,
+        ),
+    )
+
+    return fig
+
+
+def create_cumulative_cost_fan_chart(
+    arm_cumulative_by_month: np.ndarray,
+    refi_cumulative_by_month: np.ndarray,
+    refinance_month: int,
+) -> go.Figure:
+    """Create fan chart showing ARM cumulative costs with confidence bands vs refinance line.
+
+    Args:
+        arm_cumulative_by_month: Array of shape (n_simulations, n_months) with ARM cumulative costs
+        refi_cumulative_by_month: Array of shape (n_simulations, n_months) with refi cumulative costs
+        refinance_month: Month at which refinancing occurs
+
+    Returns:
+        Plotly figure with fan chart
+    """
+    n_months = arm_cumulative_by_month.shape[1]
+    months = list(range(1, n_months + 1))
+
+    fig = go.Figure()
+
+    # Calculate ARM percentiles
+    arm_p5 = np.percentile(arm_cumulative_by_month, 5, axis=0)
+    arm_p25 = np.percentile(arm_cumulative_by_month, 25, axis=0)
+    arm_p50 = np.percentile(arm_cumulative_by_month, 50, axis=0)
+    arm_p75 = np.percentile(arm_cumulative_by_month, 75, axis=0)
+    arm_p95 = np.percentile(arm_cumulative_by_month, 95, axis=0)
+
+    # 90% CI band for ARM
+    fig.add_trace(go.Scatter(
+        x=months + months[::-1],
+        y=list(arm_p95) + list(arm_p5[::-1]),
+        fill='toself',
+        fillcolor='rgba(31, 119, 180, 0.2)',
+        line=dict(width=0),
+        name='ARM 90% CI',
+        hoverinfo='skip',
+    ))
+
+    # 50% CI band for ARM
+    fig.add_trace(go.Scatter(
+        x=months + months[::-1],
+        y=list(arm_p75) + list(arm_p25[::-1]),
+        fill='toself',
+        fillcolor='rgba(31, 119, 180, 0.4)',
+        line=dict(width=0),
+        name='ARM 50% CI',
+        hoverinfo='skip',
+    ))
+
+    # ARM median line
+    fig.add_trace(go.Scatter(
+        x=months,
+        y=arm_p50,
+        name='ARM Median',
+        line=dict(color='#1f77b4', width=2),
+        hovertemplate='Month %{x}<br>ARM Cumulative: $%{y:,.0f}<extra></extra>',
+    ))
+
+    # Refinance path - use median (deterministic given fixed rate)
+    refi_median = np.median(refi_cumulative_by_month, axis=0)
+    fig.add_trace(go.Scatter(
+        x=months,
+        y=refi_median,
+        name='Refinance Path',
+        line=dict(color='#2ca02c', width=2),
+        hovertemplate='Month %{x}<br>Refi Cumulative: $%{y:,.0f}<extra></extra>',
+    ))
+
+    # Vertical line at refinance point
+    fig.add_vline(
+        x=refinance_month,
+        line_dash='dash',
+        line_color='gray',
+        annotation_text=f'Refinance (Month {refinance_month})',
+        annotation_position='top',
+    )
+
+    fig.update_layout(
+        title='Cumulative Payments Over Time',
+        xaxis_title='Month',
+        yaxis_title='Cumulative Payments ($)',
+        hovermode='x unified',
+        yaxis=dict(tickformat='$,.0f'),
         legend=dict(
             yanchor='top',
             y=0.99,

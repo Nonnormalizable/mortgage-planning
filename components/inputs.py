@@ -19,10 +19,11 @@ def mortgage_input_form(key_prefix: str = "mortgage") -> Optional[Mortgage]:
     with col1:
         principal = st.number_input(
             "Loan Amount ($)",
-            min_value=10000,
-            max_value=10000000,
-            value=1021440,
-            step=5000,
+            min_value=10000.0,
+            max_value=10000000.0,
+            value=1021440.0,
+            step=5000.0,
+            format="%.2f",
             key=f"{key_prefix}_principal",
             help="The total amount borrowed",
         )
@@ -33,6 +34,7 @@ def mortgage_input_form(key_prefix: str = "mortgage") -> Optional[Mortgage]:
             max_value=20.0,
             value=4.875,
             step=0.125,
+            format="%.3f",
             key=f"{key_prefix}_rate",
             help="Annual interest rate as a percentage",
         )
@@ -48,7 +50,7 @@ def mortgage_input_form(key_prefix: str = "mortgage") -> Optional[Mortgage]:
 
         start_date = st.text_input(
             "Start Date (optional)",
-            value="",
+            value="2025-11",
             placeholder="YYYY-MM",
             key=f"{key_prefix}_start",
             help="When the loan started (for tracking purposes)",
@@ -75,10 +77,11 @@ def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
     with col1:
         principal = st.number_input(
             "Loan Amount ($)",
-            min_value=10000,
-            max_value=10000000,
-            value=1021440,
-            step=5000,
+            min_value=10000.0,
+            max_value=10000000.0,
+            value=1021440.0,
+            step=5000.0,
+            format="%.2f",
             key=f"{key_prefix}_principal",
         )
 
@@ -88,6 +91,7 @@ def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
             max_value=20.0,
             value=4.875,
             step=0.125,
+            format="%.3f",
             key=f"{key_prefix}_initial_rate",
             help="The introductory rate during the fixed period",
         )
@@ -102,10 +106,10 @@ def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
     with col2:
         arm_type = st.selectbox(
             "ARM Type",
-            options=["5/1", "7/1", "10/1", "3/1"],
+            options=["5/1", "5/6", "7/1", "10/1", "3/1"],
             index=0,
             key=f"{key_prefix}_type",
-            help="Fixed period / adjustment frequency (e.g., 5/1 = 5 years fixed, then adjusts yearly)",
+            help="Fixed period / adjustment frequency (e.g., 5/1 = 5 years fixed, then adjusts yearly; 5/6 = 5 years fixed, then adjusts every 6 months)",
         )
 
         margin = st.number_input(
@@ -114,13 +118,16 @@ def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
             max_value=5.0,
             value=2.5,
             step=0.25,
+            format="%.3f",
             key=f"{key_prefix}_margin",
             help="Added to index rate after fixed period",
         )
 
     # Parse ARM type
     initial_years = int(arm_type.split("/")[0])
-    adjustment_years = int(arm_type.split("/")[1])
+    adjustment_part = int(arm_type.split("/")[1])
+    # For 5/6 ARM, adjustment is in months (6); for 5/1, 7/1 etc., it's in years
+    adjustment_months = adjustment_part if adjustment_part == 6 else adjustment_part * 12
 
     st.subheader("Rate Caps")
     col1, col2, col3 = st.columns(3)
@@ -130,8 +137,9 @@ def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
             "Initial Cap (%)",
             min_value=0.0,
             max_value=10.0,
-            value=2.0,
+            value=5.0,
             step=0.5,
+            format="%.3f",
             key=f"{key_prefix}_initial_cap",
             help="Maximum rate increase at first adjustment",
         )
@@ -141,8 +149,9 @@ def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
             "Periodic Cap (%)",
             min_value=0.0,
             max_value=5.0,
-            value=2.0,
+            value=1.0,
             step=0.5,
+            format="%.3f",
             key=f"{key_prefix}_periodic_cap",
             help="Maximum rate change at subsequent adjustments",
         )
@@ -154,6 +163,7 @@ def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
             max_value=10.0,
             value=5.0,
             step=0.5,
+            format="%.3f",
             key=f"{key_prefix}_lifetime_cap",
             help="Maximum total increase over initial rate",
         )
@@ -164,7 +174,7 @@ def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
             initial_rate=initial_rate / 100,
             term_months=term_years * 12,
             initial_period_months=initial_years * 12,
-            adjustment_period_months=adjustment_years * 12,
+            adjustment_period_months=adjustment_months,
             initial_cap=initial_cap / 100,
             periodic_cap=periodic_cap / 100,
             lifetime_cap=lifetime_cap / 100,
@@ -191,10 +201,11 @@ def refinance_input_form(
     with col1:
         new_principal = st.number_input(
             "New Loan Amount ($)",
-            min_value=10000,
-            max_value=10000000,
-            value=int(current_balance),
-            step=1000,
+            min_value=10000.0,
+            max_value=10000000.0,
+            value=float(current_balance),
+            step=1000.0,
+            format="%.2f",
             key=f"{key_prefix}_principal",
             help="Amount to refinance (typically current balance)",
         )
@@ -205,6 +216,7 @@ def refinance_input_form(
             max_value=20.0,
             value=5.5,
             step=0.125,
+            format="%.3f",
             key=f"{key_prefix}_rate",
         )
 
@@ -218,10 +230,11 @@ def refinance_input_form(
     with col2:
         closing_costs = st.number_input(
             "Closing Costs ($)",
-            min_value=0,
-            max_value=50000,
-            value=5000,
-            step=500,
+            min_value=0.0,
+            max_value=50000.0,
+            value=5000.0,
+            step=500.0,
+            format="%.2f",
             key=f"{key_prefix}_closing",
             help="Total closing costs (appraisal, title, fees, etc.)",
         )
@@ -232,6 +245,7 @@ def refinance_input_form(
             max_value=4.0,
             value=0.0,
             step=0.25,
+            format="%.3f",
             key=f"{key_prefix}_points",
             help="Points paid to lower rate (1 point = 1% of loan)",
         )
@@ -245,10 +259,11 @@ def refinance_input_form(
 
     cash_out = st.number_input(
         "Cash-out Amount ($)",
-        min_value=0,
-        max_value=500000,
-        value=0,
-        step=5000,
+        min_value=0.0,
+        max_value=500000.0,
+        value=0.0,
+        step=5000.0,
+        format="%.2f",
         key=f"{key_prefix}_cashout",
         help="Additional cash to take out (increases loan amount)",
     )
@@ -288,10 +303,11 @@ def extra_payment_input(key_prefix: str = "extra") -> Tuple[list, list]:
         with col1:
             extra_amount = st.number_input(
                 "Extra Amount ($)",
-                min_value=0,
-                max_value=10000,
-                value=200,
-                step=50,
+                min_value=0.0,
+                max_value=10000.0,
+                value=200.0,
+                step=50.0,
+                format="%.2f",
                 key=f"{key_prefix}_amount",
             )
 
@@ -322,10 +338,11 @@ def extra_payment_input(key_prefix: str = "extra") -> Tuple[list, list]:
         with col1:
             lump_amount = st.number_input(
                 "Lump Sum Amount ($)",
-                min_value=0,
-                max_value=500000,
-                value=10000,
-                step=1000,
+                min_value=0.0,
+                max_value=500000.0,
+                value=10000.0,
+                step=1000.0,
+                format="%.2f",
                 key=f"{key_prefix}_lump_amount",
             )
 
@@ -364,6 +381,7 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             max_value=15.0,
             value=4.0,
             step=0.25,
+            format="%.3f",
             key=f"{key_prefix}_current_rate",
             help="Current value of the rate index (e.g., SOFR)",
         )
@@ -382,6 +400,7 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             max_value=5.0,
             value=1.0,
             step=0.1,
+            format="%.3f",
             key=f"{key_prefix}_volatility",
             help="Annual volatility of rate changes",
         )
@@ -393,6 +412,7 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             max_value=15.0,
             value=4.0,
             step=0.25,
+            format="%.3f",
             key=f"{key_prefix}_ltm",
             help="Rate that the model tends toward over time (Vasicek only)",
         )
@@ -403,6 +423,7 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             max_value=1.0,
             value=0.1,
             step=0.05,
+            format="%.3f",
             key=f"{key_prefix}_reversion",
             help="How quickly rates revert to mean (higher = faster). Vasicek only.",
         )
@@ -423,6 +444,182 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
         volatility=volatility / 100,
         num_simulations=num_sims,
     )
+
+
+def shotwell_arm_input_form(key_prefix: str = "shotwell_arm") -> Optional[ARMParameters]:
+    """Create input form for Shotwell 7/6 ARM parameters.
+
+    Fixed 7/6 ARM structure (84 months fixed, 6-month adjustments).
+    Returns ARMParameters object or None if inputs are invalid.
+    """
+    col1, col2 = st.columns(2)
+
+    with col1:
+        principal = st.number_input(
+            "Loan Amount ($)",
+            min_value=10000.0,
+            max_value=10000000.0,
+            value=1021440.0,
+            step=5000.0,
+            format="%.2f",
+            key=f"{key_prefix}_principal",
+        )
+
+        initial_rate = st.number_input(
+            "Initial Rate (%)",
+            min_value=0.0,
+            max_value=20.0,
+            value=4.875,
+            step=0.125,
+            format="%.3f",
+            key=f"{key_prefix}_initial_rate",
+            help="The introductory rate during the 7-year fixed period",
+        )
+
+    with col2:
+        term_years = st.selectbox(
+            "Total Loan Term",
+            options=[15, 20, 30],
+            index=2,
+            key=f"{key_prefix}_term",
+        )
+
+        margin = st.number_input(
+            "Margin (%)",
+            min_value=0.0,
+            max_value=5.0,
+            value=2.75,
+            step=0.25,
+            format="%.3f",
+            key=f"{key_prefix}_margin",
+            help="Added to index rate after fixed period (Shotwell default: 2.75%)",
+        )
+
+    # Fixed 7/6 ARM structure
+    initial_period_months = 84  # 7 years
+    adjustment_period_months = 6  # 6-month adjustments
+
+    st.caption("**7/6 ARM**: 7-year fixed period, then adjusts every 6 months")
+
+    # Rate caps in expandable section
+    with st.expander("Advanced: Rate Caps"):
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            initial_cap = st.number_input(
+                "Initial Cap (%)",
+                min_value=0.0,
+                max_value=10.0,
+                value=5.0,
+                step=0.5,
+                format="%.3f",
+                key=f"{key_prefix}_initial_cap",
+                help="Maximum rate increase at first adjustment",
+            )
+
+        with col2:
+            periodic_cap = st.number_input(
+                "Periodic Cap (%)",
+                min_value=0.0,
+                max_value=5.0,
+                value=1.0,
+                step=0.5,
+                format="%.3f",
+                key=f"{key_prefix}_periodic_cap",
+                help="Maximum rate change at subsequent adjustments",
+            )
+
+        with col3:
+            lifetime_cap = st.number_input(
+                "Lifetime Cap (%)",
+                min_value=0.0,
+                max_value=10.0,
+                value=5.0,
+                step=0.5,
+                format="%.3f",
+                key=f"{key_prefix}_lifetime_cap",
+                help="Maximum total increase over initial rate",
+            )
+
+    if principal > 0:
+        return ARMParameters(
+            principal=principal,
+            initial_rate=initial_rate / 100,
+            term_months=term_years * 12,
+            initial_period_months=initial_period_months,
+            adjustment_period_months=adjustment_period_months,
+            initial_cap=initial_cap / 100,
+            periodic_cap=periodic_cap / 100,
+            lifetime_cap=lifetime_cap / 100,
+            margin=margin / 100,
+        )
+
+    return None
+
+
+def shotwell_refinance_params_form(
+    arm_term_months: int = 360,
+    key_prefix: str = "shotwell_refi"
+) -> dict:
+    """Create input form for Shotwell refinance parameters.
+
+    Args:
+        arm_term_months: Total ARM term in months (for slider max)
+        key_prefix: Unique key prefix for form elements
+
+    Returns:
+        Dictionary with refinance parameters
+    """
+    col1, col2 = st.columns(2)
+
+    with col1:
+        term_years = st.selectbox(
+            "Refinance Term (years)",
+            options=[15, 20, 25],
+            index=2,  # Default to 25 years
+            key=f"{key_prefix}_term",
+            help="Length of the new fixed-rate mortgage",
+        )
+
+        fixed_rate = st.number_input(
+            "Refinance Rate (%)",
+            min_value=0.0,
+            max_value=15.0,
+            value=5.5,
+            step=0.125,
+            format="%.3f",
+            key=f"{key_prefix}_rate",
+            help="Interest rate for the new fixed-rate mortgage",
+        )
+
+    with col2:
+        refinance_costs = st.number_input(
+            "Refinancing Costs ($)",
+            min_value=0.0,
+            max_value=50000.0,
+            value=5000.0,
+            step=500.0,
+            format="%.2f",
+            key=f"{key_prefix}_costs",
+            help="Total closing costs for refinancing",
+        )
+
+        # Default to month 85 (first month after 7-year fixed period)
+        refinance_month = st.slider(
+            "Refinance Month",
+            min_value=1,
+            max_value=arm_term_months - 12,
+            value=85,
+            key=f"{key_prefix}_month",
+            help="Month at which to refinance (85 = first month after 7-year fixed period)",
+        )
+
+    return {
+        'term_months': term_years * 12,
+        'fixed_rate': fixed_rate / 100,
+        'refinance_costs': refinance_costs,
+        'refinance_month': refinance_month,
+    }
 
 
 def current_loan_status_input(mortgage: Mortgage, key_prefix: str = "status") -> int:
@@ -460,6 +657,7 @@ def current_loan_status_input(mortgage: Mortgage, key_prefix: str = "status") ->
             max_value=float(mortgage.principal),
             value=float(mortgage.principal * 0.9),
             step=1000.0,
+            format="%.2f",
             key=f"{key_prefix}_balance",
         )
 
