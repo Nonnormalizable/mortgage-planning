@@ -80,6 +80,9 @@ st.markdown("""
         padding: 10px;
         border-radius: 5px;
     }
+    .stMetric label, .stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"] {
+        color: #262730 !important;
+    }
     .info-box {
         background-color: #e7f3fe;
         border-left: 6px solid #2196F3;

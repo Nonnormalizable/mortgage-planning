@@ -216,26 +216,31 @@ def compare_arm_vs_fixed_monte_carlo(
 
     savings_if_arm = fixed_total_interest - arm_results['total_interest']
 
+    # Calculate ARM initial payment using standard mortgage formula
+    initial_monthly_rate = arm_params.initial_rate / 12
+    n = arm_params.term_months
+    if initial_monthly_rate > 0:
+        arm_initial = arm_params.principal * (initial_monthly_rate * (1 + initial_monthly_rate)**n) / ((1 + initial_monthly_rate)**n - 1)
+    else:
+        arm_initial = arm_params.principal / n
+
+    # Wrap all values with float() to ensure Python native types for Streamlit metrics
     return {
-        'fixed_total_interest': round(fixed_total_interest, 2),
-        'fixed_payment': round(fixed_payment, 2),
+        'fixed_total_interest': float(round(fixed_total_interest, 2)),
+        'fixed_payment': float(round(fixed_payment, 2)),
 
-        'arm_mean_total_interest': round(np.mean(arm_results['total_interest']), 2),
-        'arm_median_total_interest': round(np.median(arm_results['total_interest']), 2),
+        'arm_mean_total_interest': float(round(np.mean(arm_results['total_interest']), 2)),
+        'arm_median_total_interest': float(round(np.median(arm_results['total_interest']), 2)),
 
-        'probability_arm_saves_money': round(probability_arm_better, 4),
-        'probability_arm_costs_more': round(1 - probability_arm_better, 4),
+        'probability_arm_saves_money': float(round(probability_arm_better, 4)),
+        'probability_arm_costs_more': float(round(1 - probability_arm_better, 4)),
 
-        'expected_savings_with_arm': round(np.mean(savings_if_arm), 2),
-        'savings_p5': round(np.percentile(savings_if_arm, 5), 2),
-        'savings_p95': round(np.percentile(savings_if_arm, 95), 2),
+        'expected_savings_with_arm': float(round(np.mean(savings_if_arm), 2)),
+        'savings_p5': float(round(np.percentile(savings_if_arm, 5), 2)),
+        'savings_p95': float(round(np.percentile(savings_if_arm, 95), 2)),
 
-        'arm_max_payment_p95': round(np.percentile(arm_results['max_payment'], 95), 2),
-        'arm_initial_payment': round(
-            arm_params.principal *
-            (arm_params.initial_rate / 12 * (1 + arm_params.initial_rate / 12)**arm_params.term_months) /
-            ((1 + arm_params.initial_rate / 12)**arm_params.term_months - 1), 2
-        ),
+        'arm_max_payment_p95': float(round(np.percentile(arm_results['max_payment'], 95), 2)),
+        'arm_initial_payment': float(round(arm_initial, 2)),
     }
 
 
