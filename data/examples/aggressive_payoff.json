@@ -3,8 +3,8 @@
   "description": "Explore how extra payments can dramatically reduce loan term and interest. This scenario shows a $300,000 mortgage with various extra payment strategies.",
   "mortgage": {
     "type": "fixed",
-    "principal": 300000,
-    "annual_rate": 0.0625,
+    "principal": 1021440,
+    "annual_rate": 0.04875,
     "term_months": 360,
     "start_date": "2024-01"
   },

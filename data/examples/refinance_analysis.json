@@ -3,8 +3,8 @@
   "description": "Homeowner with a 7% mortgage from 2022 considering refinancing to a lower rate. 24 payments have been made.",
   "mortgage": {
     "type": "fixed",
-    "principal": 350000,
-    "annual_rate": 0.07,
+    "principal": 1021440,
+    "annual_rate": 0.04875,
     "term_months": 360,
     "start_date": "2022-01"
   },

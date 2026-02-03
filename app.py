@@ -575,24 +575,24 @@ def data_management_page():
             "First-Time Homebuyer": {
                 "description": "Typical 30-year fixed mortgage for a first home",
                 "mortgage": {
-                    "principal": 350000,
-                    "annual_rate": 0.065,
+                    "principal": 1021440,
+                    "annual_rate": 0.04875,
                     "term_months": 360,
                 },
             },
             "Refinance Opportunity": {
                 "description": "Homeowner with older high-rate mortgage considering refinance",
                 "mortgage": {
-                    "principal": 280000,
-                    "annual_rate": 0.075,
+                    "principal": 1021440,
+                    "annual_rate": 0.04875,
                     "term_months": 360,
                 },
             },
             "15-Year Payoff": {
                 "description": "Aggressive payoff with 15-year term",
                 "mortgage": {
-                    "principal": 400000,
-                    "annual_rate": 0.055,
+                    "principal": 1021440,
+                    "annual_rate": 0.04875,
                     "term_months": 180,
                 },
             },

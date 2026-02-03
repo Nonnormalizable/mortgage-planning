@@ -3,8 +3,8 @@
   "description": "Compare a 5/1 ARM with lower initial rate to a 30-year fixed mortgage. Useful for buyers planning to move within 5-7 years.",
   "arm": {
     "type": "arm",
-    "principal": 400000,
-    "initial_rate": 0.055,
+    "principal": 1021440,
+    "initial_rate": 0.04875,
     "term_months": 360,
     "initial_period_months": 60,
     "adjustment_period_months": 12,
@@ -16,7 +16,7 @@
   },
   "mortgage": {
     "type": "fixed",
-    "principal": 400000,
+    "principal": 1021440,
     "annual_rate": 0.0675,
     "term_months": 360
   },
