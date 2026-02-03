@@ -1,0 +1,31 @@
+{
+  "name": "Aggressive Payoff Strategy",
+  "description": "Explore how extra payments can dramatically reduce loan term and interest. This scenario shows a $300,000 mortgage with various extra payment strategies.",
+  "mortgage": {
+    "type": "fixed",
+    "principal": 300000,
+    "annual_rate": 0.0625,
+    "term_months": 360,
+    "start_date": "2024-01"
+  },
+  "extra_payments": [
+    {
+      "amount": 500,
+      "frequency": "monthly",
+      "start_month": 1,
+      "end_month": null
+    }
+  ],
+  "lump_sums": [
+    {
+      "amount": 10000,
+      "month": 12
+    },
+    {
+      "amount": 10000,
+      "month": 24
+    }
+  ],
+  "created_at": "2024-01-01T00:00:00",
+  "version": "1.0"
+}

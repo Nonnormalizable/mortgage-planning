@@ -1,0 +1,17 @@
+{
+  "name": "First-Time Homebuyer",
+  "description": "Typical 30-year fixed mortgage scenario for a first-time homebuyer purchasing a $400,000 home with 20% down payment.",
+  "mortgage": {
+    "type": "fixed",
+    "principal": 320000,
+    "annual_rate": 0.065,
+    "term_months": 360,
+    "start_date": "2024-01"
+  },
+  "refinance_options": [],
+  "extra_payments": [],
+  "lump_sums": [],
+  "current_month": 0,
+  "created_at": "2024-01-01T00:00:00",
+  "version": "1.0"
+}
