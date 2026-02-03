@@ -17,8 +17,8 @@ class ARMParameters:
     adjustment_period_months: int = 12  # How often rate adjusts after initial period
 
     # Rate caps
-    initial_cap: float = 0.02  # Max first adjustment (e.g., 2%)
-    periodic_cap: float = 0.02  # Max subsequent adjustments
+    initial_cap: float = 0.05  # Max first adjustment (e.g., 5%)
+    periodic_cap: float = 0.01  # Max subsequent adjustments (e.g., 1%)
     lifetime_cap: float = 0.05  # Max increase over initial rate
     lifetime_floor: float = 0.0  # Minimum rate (often equals margin)
 

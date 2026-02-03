@@ -123,7 +123,7 @@ def display_comparison_table(
     for col in display_df.columns:
         if display_df[col].dtype in ['float64', 'int64']:
             if 'rate' in col.lower() or 'ratio' in col.lower():
-                display_df[col] = display_df[col].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "-")
+                display_df[col] = display_df[col].apply(lambda x: f"{x:.3%}" if pd.notna(x) else "-")
             elif any(word in col.lower() for word in ['cost', 'payment', 'savings', 'interest', 'principal']):
                 display_df[col] = display_df[col].apply(lambda x: f"${x:,.2f}" if pd.notna(x) else "-")
             elif 'month' in col.lower():
@@ -153,9 +153,9 @@ def display_payoff_strategy_table(strategies: pd.DataFrame) -> None:
     })
 
     # Format
-    display_df['Extra/Month'] = display_df['Extra/Month'].apply(lambda x: f"${x:,.0f}")
-    display_df['Total Interest'] = display_df['Total Interest'].apply(lambda x: f"${x:,.0f}")
-    display_df['Interest Saved'] = display_df['Interest Saved'].apply(lambda x: f"${x:,.0f}")
+    display_df['Extra/Month'] = display_df['Extra/Month'].apply(lambda x: f"${x:,.2f}")
+    display_df['Total Interest'] = display_df['Total Interest'].apply(lambda x: f"${x:,.2f}")
+    display_df['Interest Saved'] = display_df['Interest Saved'].apply(lambda x: f"${x:,.2f}")
 
     # Add years column
     display_df['Years Saved'] = (display_df['Months Saved'] / 12).round(1)
@@ -183,9 +183,9 @@ def display_monte_carlo_stats(stats: pd.DataFrame) -> None:
             if col in row:
                 val = row[col]
                 if 'rate' in metric:
-                    formatted_row[col.upper()] = f"{val:.2%}"
+                    formatted_row[col.upper()] = f"{val:.3%}"
                 else:
-                    formatted_row[col.upper()] = f"${val:,.0f}"
+                    formatted_row[col.upper()] = f"${val:,.2f}"
 
         formatted_rows.append(formatted_row)
 

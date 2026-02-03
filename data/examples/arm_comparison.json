@@ -8,17 +8,19 @@
     "term_months": 360,
     "initial_period_months": 60,
     "adjustment_period_months": 12,
-    "initial_cap": 0.02,
-    "periodic_cap": 0.02,
+    "initial_cap": 0.05,
+    "periodic_cap": 0.01,
     "lifetime_cap": 0.05,
     "lifetime_floor": 0.025,
-    "margin": 0.025
+    "margin": 0.025,
+    "start_date": "2025-11"
   },
   "mortgage": {
     "type": "fixed",
     "principal": 1021440,
     "annual_rate": 0.0675,
-    "term_months": 360
+    "term_months": 360,
+    "start_date": "2025-11"
   },
   "monte_carlo_params": {
     "current_rate": 0.045,
