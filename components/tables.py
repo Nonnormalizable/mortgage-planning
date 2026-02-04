@@ -204,6 +204,9 @@ def display_arm_vs_refi_schedule_comparison(
     refinance_month: int,
     refinance_costs: float,
     key_prefix: str = "arm_refi_schedule",
+    simulation_index: int | None = None,
+    is_historical: bool = False,
+    historical_start_year: int | None = None,
 ) -> None:
     """Display ARM vs Refinance schedule comparison table.
 
@@ -213,6 +216,9 @@ def display_arm_vs_refi_schedule_comparison(
         refinance_month: Month at which refinance occurs
         refinance_costs: One-time refinancing costs
         key_prefix: Unique key prefix for Streamlit widgets
+        simulation_index: Index of the simulation (used to compute historical month)
+        is_historical: Whether this is a historical simulation
+        historical_start_year: Start year of historical data (default 1975)
     """
     st.subheader("ARM vs Refinance Schedule Comparison")
 
@@ -229,6 +235,17 @@ def display_arm_vs_refi_schedule_comparison(
     fixed_payment = fixed_schedule['payment'].iloc[0] if len(fixed_schedule) > 0 else 0
     fixed_month_counter = 0
 
+    # Compute historical start date if in historical mode
+    historical_start_date = None
+    if is_historical and simulation_index is not None:
+        start_year = historical_start_year or 1975
+        # Each simulation starts N months after the beginning of historical data
+        # simulation_index 0 = starts at month 0 (Jan of start_year)
+        # simulation_index 1 = starts at month 1 (Feb of start_year), etc.
+        from datetime import date
+        total_start_months = start_year * 12 + simulation_index
+        historical_start_date = date(total_start_months // 12, (total_start_months % 12) + 1, 1)
+
     for _, arm_row in arm_schedule.iterrows():
         month = int(arm_row['month'])
         row = {
@@ -237,6 +254,16 @@ def display_arm_vs_refi_schedule_comparison(
             'arm_balance': arm_row['balance'],
             'arm_rate': arm_row['rate'],
         }
+
+        # Add historical month if applicable
+        if historical_start_date:
+            # Compute the historical date for this month
+            total_months = historical_start_date.year * 12 + (historical_start_date.month - 1) + (month - 1)
+            hist_year = total_months // 12
+            hist_month = (total_months % 12) + 1
+            row['historical_month'] = date(hist_year, hist_month, 1).strftime("%b %Y")
+        else:
+            row['historical_month'] = "N/A"
 
         if month < refinance_month:
             # Before refinance - both paths same (ARM)
@@ -320,6 +347,7 @@ def display_arm_vs_refi_schedule_comparison(
         # Rename and format
         display_df = display_slice.rename(columns={
             'month': 'Month',
+            'historical_month': 'Historical Month',
             'arm_payment': 'ARM Payment',
             'arm_balance': 'ARM Balance',
             'arm_rate': 'ARM Rate',
@@ -332,6 +360,10 @@ def display_arm_vs_refi_schedule_comparison(
         display_df['ARM Rate'] = display_df['ARM Rate'].apply(lambda x: f"{x:.3%}")
         display_df['Refi Payment'] = display_df['Refi Payment'].apply(lambda x: f"${x:,.2f}")
         display_df['Refi Balance'] = display_df['Refi Balance'].apply(lambda x: f"${x:,.0f}")
+
+        # Reorder columns to put Historical Month after Month
+        column_order = ['Month', 'Historical Month', 'ARM Payment', 'ARM Balance', 'ARM Rate', 'Refi Payment', 'Refi Balance']
+        display_df = display_df[column_order]
 
         st.dataframe(
             display_df,

@@ -739,6 +739,7 @@ def shotwell_refinance_page():
             st.session_state['shotwell_results'] = results
             st.session_state['shotwell_arm'] = arm
             st.session_state['shotwell_refi_params'] = refi_params
+            st.session_state['shotwell_sim_params'] = sim_params
 
     # Display results if available in session state
     if 'shotwell_results' in st.session_state:
@@ -925,12 +926,16 @@ def shotwell_refinance_page():
         fixed_schedule = fixed_mortgage.amortization_schedule()
 
         # Display the comparison table
+        stored_sim_params = st.session_state.get('shotwell_sim_params')
         display_arm_vs_refi_schedule_comparison(
             arm_schedule=arm_schedule,
             fixed_schedule=fixed_schedule,
             refinance_month=stored_refi_params['refinance_month'],
             refinance_costs=stored_refi_params['refinance_costs'],
             key_prefix="shotwell_schedule",
+            simulation_index=sim_idx,
+            is_historical=stored_sim_params and stored_sim_params.model == RateModel.HISTORICAL,
+            historical_start_year=stored_sim_params.historical_start_year if stored_sim_params else None,
         )
 
 
