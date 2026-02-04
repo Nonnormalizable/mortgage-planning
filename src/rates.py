@@ -28,6 +28,9 @@ DEFAULT_CACHE_DIR = Path.home() / ".cache" / "mortgage-planning"
 CACHE_EXPIRY_CURRENT = timedelta(hours=24)  # Current rates expire after 24 hours
 CACHE_EXPIRY_HISTORICAL = timedelta(days=7)  # Historical data expires after 7 days
 
+# Bundled data path (fallback when API unavailable)
+BUNDLED_DATA_PATH = Path(__file__).parent.parent / "data" / "historical_rates.json"
+
 
 @dataclass
 class RateDataPoint:
@@ -286,6 +289,8 @@ class RateDataProvider:
     ) -> pd.DataFrame:
         """Get historical index rates (SOFR + Fed Funds for earlier data).
 
+        Uses bundled historical data as fallback when FRED API is unavailable.
+
         Args:
             start_year: Start year (default 1975)
             end_year: End year (default current year)
@@ -296,6 +301,73 @@ class RateDataProvider:
         if end_year is None:
             end_year = date.today().year
 
+        # Try to load from bundled data first (always available, no API needed)
+        try:
+            return self._load_bundled_historical_data(start_year, end_year)
+        except Exception:
+            pass  # Fall through to API if bundled data fails
+
+        # Try FRED API
+        try:
+            return self._fetch_historical_from_fred(start_year, end_year)
+        except RuntimeError:
+            # Last resort: try bundled data again with less strict error handling
+            return self._load_bundled_historical_data(start_year, end_year)
+
+    def _load_bundled_historical_data(
+        self,
+        start_year: int,
+        end_year: int,
+    ) -> pd.DataFrame:
+        """Load historical data from bundled JSON file.
+
+        Args:
+            start_year: Start year to filter
+            end_year: End year to filter
+
+        Returns:
+            DataFrame with 'date', 'rate', and 'source' columns
+        """
+        if not BUNDLED_DATA_PATH.exists():
+            raise RuntimeError(f"Bundled data file not found: {BUNDLED_DATA_PATH}")
+
+        with open(BUNDLED_DATA_PATH) as f:
+            data = json.load(f)
+
+        records = []
+        for entry in data["rates"]:
+            # Parse date from "YYYY-MM" format
+            year, month = entry["date"].split("-")
+            entry_date = date(int(year), int(month), 1)
+            records.append({
+                "date": entry_date,
+                "rate": entry["rate"],
+                "source": "BUNDLED",
+            })
+
+        df = pd.DataFrame(records)
+
+        # Filter to requested date range
+        start_date = date(start_year, 1, 1)
+        end_date = date(end_year, 12, 31)
+        df = df[(df["date"] >= start_date) & (df["date"] <= end_date)]
+
+        return df.sort_values("date").reset_index(drop=True)
+
+    def _fetch_historical_from_fred(
+        self,
+        start_year: int,
+        end_year: int,
+    ) -> pd.DataFrame:
+        """Fetch historical rates from FRED API.
+
+        Args:
+            start_year: Start year
+            end_year: End year
+
+        Returns:
+            DataFrame with 'date', 'rate', and 'source' columns
+        """
         start_date = date(start_year, 1, 1)
         end_date = date(end_year, 12, 31)
 
