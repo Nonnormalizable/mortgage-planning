@@ -1,18 +1,18 @@
 """Tests for Monte Carlo simulation."""
 
-import pytest
 import numpy as np
+
+from src.arm import ARMParameters
+from src.export import dict_to_rate_sim_params, rate_sim_params_to_dict
 from src.monte_carlo import (
     RateModel,
     RateSimulationParams,
-    simulate_rate_paths,
-    simulate_arm_outcomes,
     calculate_simulation_statistics,
-    generate_fan_chart_data,
     compare_arm_vs_fixed_monte_carlo,
+    generate_fan_chart_data,
+    simulate_arm_outcomes,
+    simulate_rate_paths,
 )
-from src.arm import ARMParameters
-from src.export import rate_sim_params_to_dict, dict_to_rate_sim_params
 
 
 class TestSimulateRatePaths:
@@ -127,7 +127,7 @@ class TestSimulateARMOutcomes:
 
         results = simulate_arm_outcomes(arm, rate_params)
 
-        for key, values in results.items():
+        for _key, values in results.items():
             assert len(values) == 50
 
 

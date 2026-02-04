@@ -1,16 +1,15 @@
 """JSON export/import functionality for scenarios."""
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any, List
 
-from .mortgage import Mortgage
 from .arm import ARMParameters
-from .refinance import RefinanceScenario
+from .monte_carlo import RateModel, RateSimulationParams
+from .mortgage import Mortgage
 from .payoff import ExtraPayment, LumpSumPayment, PaymentFrequency
-from .monte_carlo import RateSimulationParams, RateModel
+from .refinance import RefinanceScenario
 
 
 def mortgage_to_dict(mortgage: Mortgage) -> dict:
@@ -171,12 +170,12 @@ class Scenario:
 
     name: str
     description: str
-    mortgage: Optional[Dict] = None
-    arm: Optional[Dict] = None
-    refinance_options: List[Dict] = None
-    extra_payments: List[Dict] = None
-    lump_sums: List[Dict] = None
-    monte_carlo_params: Optional[Dict] = None
+    mortgage: dict | None = None
+    arm: dict | None = None
+    refinance_options: list[dict] = None
+    extra_payments: list[dict] = None
+    lump_sums: list[dict] = None
+    monte_carlo_params: dict | None = None
     current_month: int = 0
     created_at: str = None
     updated_at: str = None
@@ -216,7 +215,7 @@ def export_scenario(scenario: Scenario, filepath: str) -> None:
 
 def import_scenario(filepath: str) -> Scenario:
     """Import scenario from JSON file."""
-    with open(filepath, 'r') as f:
+    with open(filepath) as f:
         data = json.load(f)
 
     return Scenario(
@@ -234,7 +233,7 @@ def import_scenario(filepath: str) -> Scenario:
     )
 
 
-def list_example_scenarios(examples_dir: str = 'data/examples') -> List[str]:
+def list_example_scenarios(examples_dir: str = 'data/examples') -> list[str]:
     """List available example scenario files."""
     path = Path(examples_dir)
     if not path.exists():

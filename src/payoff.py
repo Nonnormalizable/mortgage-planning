@@ -1,10 +1,9 @@
 """Extra payment and payoff strategy calculations."""
 
-import numpy as np
-import pandas as pd
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 from enum import Enum
+
+import pandas as pd
 
 from .mortgage import Mortgage
 
@@ -21,7 +20,7 @@ class ExtraPayment:
     amount: float  # Extra amount per payment
     frequency: PaymentFrequency = PaymentFrequency.MONTHLY
     start_month: int = 1  # When to start extra payments
-    end_month: Optional[int] = None  # When to stop (None = until payoff)
+    end_month: int | None = None  # When to stop (None = until payoff)
 
 
 @dataclass
@@ -34,9 +33,9 @@ class LumpSumPayment:
 
 def calculate_payoff_with_extra_payments(
     mortgage: Mortgage,
-    extra_payments: List[ExtraPayment] = None,
-    lump_sums: List[LumpSumPayment] = None,
-) -> Tuple[pd.DataFrame, dict]:
+    extra_payments: list[ExtraPayment] = None,
+    lump_sums: list[LumpSumPayment] = None,
+) -> tuple[pd.DataFrame, dict]:
     """Calculate amortization schedule with extra payments.
 
     Args:
@@ -144,7 +143,7 @@ def calculate_payoff_with_extra_payments(
     return df, summary
 
 
-def calculate_biweekly_schedule(mortgage: Mortgage) -> Tuple[pd.DataFrame, dict]:
+def calculate_biweekly_schedule(mortgage: Mortgage) -> tuple[pd.DataFrame, dict]:
     """Calculate schedule with biweekly payments.
 
     Biweekly = 26 half-payments per year = 13 full payments
@@ -228,7 +227,7 @@ def find_payoff_date_for_extra(
 def find_extra_for_target_payoff(
     mortgage: Mortgage,
     target_months: int,
-) -> Optional[float]:
+) -> float | None:
     """Find the extra monthly payment needed to pay off in target months.
 
     Returns None if target is not achievable (already shorter or impossible).

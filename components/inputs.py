@@ -1,15 +1,16 @@
 """Streamlit input components for mortgage parameters."""
 
+
 import streamlit as st
-from typing import Tuple, Optional
-from src.mortgage import Mortgage
+
 from src.arm import ARMParameters
-from src.refinance import RefinanceScenario
+from src.monte_carlo import RateModel, RateSimulationParams
+from src.mortgage import Mortgage
 from src.payoff import ExtraPayment, LumpSumPayment, PaymentFrequency
-from src.monte_carlo import RateSimulationParams, RateModel
+from src.refinance import RefinanceScenario
 
 
-def mortgage_input_form(key_prefix: str = "mortgage") -> Optional[Mortgage]:
+def mortgage_input_form(key_prefix: str = "mortgage") -> Mortgage | None:
     """Create input form for fixed-rate mortgage parameters.
 
     Returns Mortgage object or None if inputs are invalid.
@@ -67,7 +68,7 @@ def mortgage_input_form(key_prefix: str = "mortgage") -> Optional[Mortgage]:
     return None
 
 
-def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
+def arm_input_form(key_prefix: str = "arm") -> ARMParameters | None:
     """Create input form for ARM parameters.
 
     Returns ARMParameters object or None if inputs are invalid.
@@ -187,7 +188,7 @@ def arm_input_form(key_prefix: str = "arm") -> Optional[ARMParameters]:
 def refinance_input_form(
     current_balance: float,
     key_prefix: str = "refi"
-) -> Optional[RefinanceScenario]:
+) -> RefinanceScenario | None:
     """Create input form for refinance scenario.
 
     Args:
@@ -282,7 +283,7 @@ def refinance_input_form(
     return None
 
 
-def extra_payment_input(key_prefix: str = "extra") -> Tuple[list, list]:
+def extra_payment_input(key_prefix: str = "extra") -> tuple[list, list]:
     """Create input form for extra payment strategies.
 
     Returns tuple of (extra_payments list, lump_sums list).
@@ -415,7 +416,7 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             st.session_state[f"{key_prefix}_jump_std"] = p["jump_std"]
 
     # Presets dropdown with callback
-    preset = st.selectbox(
+    st.selectbox(
         "Economic Preset",
         options=["Custom", "Stable Economy", "Uncertain Economy"],
         index=0,
@@ -554,7 +555,7 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
     )
 
 
-def shotwell_arm_input_form(key_prefix: str = "shotwell_arm") -> Optional[ARMParameters]:
+def shotwell_arm_input_form(key_prefix: str = "shotwell_arm") -> ARMParameters | None:
     """Create input form for Shotwell 7/6 ARM parameters.
 
     Fixed 7/6 ARM structure (84 months fixed, 6-month adjustments).

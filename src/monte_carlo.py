@@ -1,10 +1,10 @@
 """Monte Carlo simulation for interest rate scenarios."""
 
+from dataclasses import dataclass
+from enum import Enum
+
 import numpy as np
 import pandas as pd
-from dataclasses import dataclass
-from typing import List, Optional, Tuple
-from enum import Enum
 
 from .arm import ARMParameters, generate_arm_schedule
 
@@ -40,7 +40,7 @@ class RateSimulationParams:
     # Simulation settings
     num_simulations: int = 300
     time_horizon_months: int = 360  # How far to simulate
-    random_seed: Optional[int] = None
+    random_seed: int | None = None
 
 
 def simulate_rate_paths(params: RateSimulationParams) -> np.ndarray:
@@ -206,7 +206,7 @@ def calculate_simulation_statistics(results: dict) -> pd.DataFrame:
 
 def generate_fan_chart_data(
     rate_paths: np.ndarray,
-    percentiles: List[int] = [5, 25, 50, 75, 95],
+    percentiles: list[int] = None,
 ) -> pd.DataFrame:
     """Generate data for fan chart visualization.
 
@@ -217,6 +217,8 @@ def generate_fan_chart_data(
     Returns:
         DataFrame with percentile bands over time
     """
+    if percentiles is None:
+        percentiles = [5, 25, 50, 75, 95]
     n_months = rate_paths.shape[1]
     data = {'month': list(range(1, n_months + 1))}
 
@@ -390,7 +392,7 @@ def simulate_arm_vs_refinance_monte_carlo(
 
     # Fixed payment for display
     # Use median balance at refinance for representative fixed payment
-    median_balance = float(np.median([
+    float(np.median([
         arm_cumulative_by_month[i][refinance_month - 2] if refinance_month > 1 else arm_params.principal
         for i in range(len(arm_cumulative_by_month))
     ]))
@@ -426,7 +428,7 @@ def get_arm_schedule_for_simulation(
     arm_params: ARMParameters,
     rate_paths: np.ndarray,
     simulation_index: int,
-) -> Tuple[pd.DataFrame, List[float]]:
+) -> tuple[pd.DataFrame, list[float]]:
     """Regenerate ARM schedule for a specific simulation.
 
     Args:
@@ -463,13 +465,17 @@ def get_arm_schedule_for_simulation(
 def run_sensitivity_analysis(
     arm_params: ARMParameters,
     base_sim_params: RateSimulationParams,
-    volatilities: List[float] = [0.005, 0.01, 0.015, 0.02],
-    long_term_means: List[float] = [0.03, 0.04, 0.05, 0.06],
+    volatilities: list[float] = None,
+    long_term_means: list[float] = None,
 ) -> pd.DataFrame:
     """Run sensitivity analysis varying key parameters.
 
     Returns DataFrame showing how outcomes change with different assumptions.
     """
+    if long_term_means is None:
+        long_term_means = [0.03, 0.04, 0.05, 0.06]
+    if volatilities is None:
+        volatilities = [0.005, 0.01, 0.015, 0.02]
     results = []
 
     for vol in volatilities:

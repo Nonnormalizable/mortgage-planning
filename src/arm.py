@@ -1,9 +1,8 @@
 """Adjustable Rate Mortgage (ARM) calculations."""
 
-import numpy as np
+from dataclasses import dataclass
+
 import pandas as pd
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -25,7 +24,7 @@ class ARMParameters:
     # Index and margin
     margin: float = 0.025  # Added to index to get rate
 
-    start_date: Optional[str] = None
+    start_date: str | None = None
 
     @property
     def arm_type(self) -> str:
@@ -85,8 +84,8 @@ def calculate_arm_rate(
 
 def generate_arm_schedule(
     params: ARMParameters,
-    future_index_values: Optional[List[float]] = None,
-) -> Tuple[pd.DataFrame, List[RateAdjustment]]:
+    future_index_values: list[float] | None = None,
+) -> tuple[pd.DataFrame, list[RateAdjustment]]:
     """Generate amortization schedule for an ARM.
 
     Args:
@@ -248,7 +247,7 @@ def calculate_arm_best_case(params: ARMParameters) -> dict:
 def compare_arm_to_fixed(
     arm_params: ARMParameters,
     fixed_rate: float,
-    index_values: Optional[List[float]] = None,
+    index_values: list[float] | None = None,
 ) -> dict:
     """Compare ARM to equivalent fixed-rate mortgage.
 

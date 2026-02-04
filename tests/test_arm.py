@@ -1,14 +1,12 @@
 """Tests for ARM calculations."""
 
-import pytest
-import numpy as np
 from src.arm import (
     ARMParameters,
-    calculate_arm_rate,
-    generate_arm_schedule,
-    calculate_arm_worst_case,
     calculate_arm_best_case,
+    calculate_arm_rate,
+    calculate_arm_worst_case,
     compare_arm_to_fixed,
+    generate_arm_schedule,
 )
 
 

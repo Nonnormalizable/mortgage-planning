@@ -1,74 +1,66 @@
 """Mortgage Planning & Refinancing Tool - Streamlit Application."""
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-from pathlib import Path
 
-# Import core modules
-from src.mortgage import Mortgage, calculate_affordability
-from src.arm import ARMParameters, generate_arm_schedule, calculate_arm_worst_case, compare_arm_to_fixed
-from src.refinance import (
-    RefinanceScenario,
-    calculate_refinance_comparison,
-    generate_break_even_chart_data,
-)
-from src.payoff import (
-    calculate_payoff_with_extra_payments,
-    calculate_biweekly_schedule,
-    compare_payoff_strategies,
-)
-from src.monte_carlo import (
-    RateSimulationParams,
-    simulate_rate_paths,
-    simulate_arm_outcomes,
-    calculate_simulation_statistics,
-    generate_fan_chart_data,
-    compare_arm_vs_fixed_monte_carlo,
-    simulate_arm_vs_refinance_monte_carlo,
-    get_arm_schedule_for_simulation,
-)
-from src.export import (
-    Scenario,
-    export_scenario,
-    import_scenario,
-    mortgage_to_dict,
-    dict_to_mortgage,
-    arm_to_dict,
-    refinance_to_dict,
-    extra_payment_to_dict,
-    rate_sim_params_to_dict,
+import numpy as np
+import streamlit as st
+
+from components.charts import (
+    create_amortization_chart,
+    create_arm_vs_fixed_comparison_chart,
+    create_cost_distribution_comparison_chart,
+    create_cumulative_cost_fan_chart,
+    create_monte_carlo_fan_chart,
+    create_monte_carlo_histogram,
+    create_payment_breakdown_chart,
+    create_payoff_comparison_chart,
+    create_refinance_break_even_chart,
 )
 
 # Import UI components
 from components.inputs import (
-    mortgage_input_form,
     arm_input_form,
-    refinance_input_form,
+    current_loan_status_input,
     extra_payment_input,
     monte_carlo_input_form,
-    current_loan_status_input,
+    mortgage_input_form,
+    refinance_input_form,
     shotwell_arm_input_form,
     shotwell_refinance_params_form,
 )
 from components.tables import (
     display_amortization_table,
-    display_payoff_strategy_table,
-    display_monte_carlo_stats,
-    display_refinance_summary,
     display_arm_vs_refi_schedule_comparison,
+    display_monte_carlo_stats,
+    display_payoff_strategy_table,
+    display_refinance_summary,
 )
-from components.charts import (
-    create_amortization_chart,
-    create_payment_breakdown_chart,
-    create_equity_chart,
-    create_refinance_break_even_chart,
-    create_payoff_comparison_chart,
-    create_monte_carlo_fan_chart,
-    create_monte_carlo_histogram,
-    create_arm_vs_fixed_comparison_chart,
-    create_cost_distribution_comparison_chart,
-    create_cumulative_cost_fan_chart,
+from src.arm import (
+    calculate_arm_worst_case,
+    compare_arm_to_fixed,
+    generate_arm_schedule,
+)
+from src.export import (
+    Scenario,
+    mortgage_to_dict,
+)
+from src.monte_carlo import (
+    calculate_simulation_statistics,
+    compare_arm_vs_fixed_monte_carlo,
+    generate_fan_chart_data,
+    get_arm_schedule_for_simulation,
+    simulate_arm_outcomes,
+    simulate_arm_vs_refinance_monte_carlo,
+    simulate_rate_paths,
+)
+
+# Import core modules
+from src.payoff import (
+    calculate_payoff_with_extra_payments,
+    compare_payoff_strategies,
+)
+from src.refinance import (
+    calculate_refinance_comparison,
+    generate_break_even_chart_data,
 )
 
 # Page configuration
@@ -651,7 +643,6 @@ def shotwell_refinance_page():
 
         with col2:
             savings_val = results['expected_arm_savings']
-            delta_color = "normal" if savings_val > 0 else "inverse"
             st.metric(
                 "Expected ARM Savings",
                 f"${round(savings_val, -2):,.0f}",

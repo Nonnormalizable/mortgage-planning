@@ -1,8 +1,8 @@
 """Streamlit table display components."""
 
-import streamlit as st
+
 import pandas as pd
-from typing import Optional
+import streamlit as st
 
 
 def display_amortization_table(
@@ -106,7 +106,7 @@ def display_amortization_table(
 def display_comparison_table(
     comparisons: pd.DataFrame,
     title: str = "Comparison",
-    highlight_best: Optional[str] = None,
+    highlight_best: str | None = None,
 ) -> None:
     """Display comparison table with optional highlighting.
 
@@ -228,7 +228,6 @@ def display_arm_vs_refi_schedule_comparison(
     combined_rows = []
     fixed_payment = fixed_schedule['payment'].iloc[0] if len(fixed_schedule) > 0 else 0
     fixed_month_counter = 0
-    refi_balance = None
 
     for _, arm_row in arm_schedule.iterrows():
         month = int(arm_row['month'])
@@ -245,7 +244,7 @@ def display_arm_vs_refi_schedule_comparison(
             row['refi_balance'] = arm_row['balance']
         elif month == refinance_month:
             # Refinance month - ARM balance becomes refi starting balance
-            refi_balance = arm_row['balance']
+            arm_row['balance']
             row['refi_payment'] = refinance_costs + fixed_payment
             # After first fixed payment
             if fixed_month_counter < len(fixed_schedule):

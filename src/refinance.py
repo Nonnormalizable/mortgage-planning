@@ -1,9 +1,8 @@
 """Refinance comparison and break-even analysis."""
 
-import numpy as np
-import pandas as pd
 from dataclasses import dataclass
-from typing import Optional, List
+
+import pandas as pd
 
 from .mortgage import Mortgage
 
@@ -42,7 +41,6 @@ def calculate_refinance_comparison(
     current_payment = current_mortgage.monthly_payment
 
     # Calculate remaining interest on current mortgage
-    current_remaining_schedule = []
     balance = current_balance
     current_remaining_interest = 0.0
 
@@ -188,13 +186,12 @@ def find_optimal_refinance_rate(
     closing_costs: float,
     target_break_even_months: int = 36,
     rate_search_range: tuple = (0.02, 0.10),
-) -> Optional[float]:
+) -> float | None:
     """Find the maximum rate at which refinancing achieves target break-even.
 
     Useful for determining: "Rates need to drop to X% for refinancing to make sense."
     """
     current_balance = current_mortgage.balance_at_month(current_month)
-    current_payment = current_mortgage.monthly_payment
 
     # Binary search for the rate
     low, high = rate_search_range
@@ -236,7 +233,7 @@ def find_optimal_refinance_rate(
 def compare_multiple_refinance_options(
     current_mortgage: Mortgage,
     current_month: int,
-    options: List[RefinanceScenario],
+    options: list[RefinanceScenario],
 ) -> pd.DataFrame:
     """Compare multiple refinance options side by side."""
     results = []

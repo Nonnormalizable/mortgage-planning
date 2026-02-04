@@ -1,10 +1,9 @@
 """Plotly chart components for mortgage visualization."""
 
-import plotly.graph_objects as go
-import plotly.express as px
-import pandas as pd
+
 import numpy as np
-from typing import List, Optional
+import pandas as pd
+import plotly.graph_objects as go
 
 
 def create_amortization_chart(schedule: pd.DataFrame) -> go.Figure:
@@ -16,7 +15,7 @@ def create_amortization_chart(schedule: pd.DataFrame) -> go.Figure:
         x=schedule['month'],
         y=schedule['balance'],
         name='Remaining Balance',
-        line=dict(color='#1f77b4', width=2),
+        line={'color': '#1f77b4', 'width': 2},
         hovertemplate='Month %{x}<br>Balance: $%{y:,.0f}<extra></extra>',
     ))
 
@@ -26,7 +25,7 @@ def create_amortization_chart(schedule: pd.DataFrame) -> go.Figure:
         y=schedule['cumulative_principal'],
         name='Principal Paid',
         fill='tozeroy',
-        line=dict(color='#2ca02c', width=1),
+        line={'color': '#2ca02c', 'width': 1},
         fillcolor='rgba(44, 160, 44, 0.3)',
         hovertemplate='Month %{x}<br>Principal Paid: $%{y:,.0f}<extra></extra>',
     ))
@@ -36,7 +35,7 @@ def create_amortization_chart(schedule: pd.DataFrame) -> go.Figure:
         x=schedule['month'],
         y=schedule['cumulative_interest'],
         name='Interest Paid',
-        line=dict(color='#d62728', width=2, dash='dash'),
+        line={'color': '#d62728', 'width': 2, 'dash': 'dash'},
         hovertemplate='Month %{x}<br>Interest Paid: $%{y:,.0f}<extra></extra>',
     ))
 
@@ -45,13 +44,13 @@ def create_amortization_chart(schedule: pd.DataFrame) -> go.Figure:
         xaxis_title='Month',
         yaxis_title='Amount ($)',
         hovermode='x unified',
-        legend=dict(
-            yanchor='top',
-            y=0.99,
-            xanchor='right',
-            x=0.99,
-        ),
-        yaxis=dict(tickformat='$,.0f'),
+        legend={
+            'yanchor': 'top',
+            'y': 0.99,
+            'xanchor': 'right',
+            'x': 0.99,
+        },
+        yaxis={'tickformat': '$,.0f'},
     )
 
     return fig
@@ -87,13 +86,13 @@ def create_payment_breakdown_chart(schedule: pd.DataFrame) -> go.Figure:
         yaxis_title='Amount ($)',
         barmode='stack',
         hovermode='x unified',
-        yaxis=dict(tickformat='$,.0f'),
+        yaxis={'tickformat': '$,.0f'},
     )
 
     return fig
 
 
-def create_equity_chart(schedule: pd.DataFrame, home_value: Optional[float] = None) -> go.Figure:
+def create_equity_chart(schedule: pd.DataFrame, home_value: float | None = None) -> go.Figure:
     """Create equity buildup chart.
 
     If home_value is provided, shows equity as percentage of home value.
@@ -108,7 +107,7 @@ def create_equity_chart(schedule: pd.DataFrame, home_value: Optional[float] = No
             y=equity_pct,
             name='Equity %',
             fill='tozeroy',
-            line=dict(color='#17becf', width=2),
+            line={'color': '#17becf', 'width': 2},
             fillcolor='rgba(23, 190, 207, 0.3)',
             hovertemplate='Month %{x}<br>Equity: %{y:.1f}%<extra></extra>',
         ))
@@ -119,13 +118,13 @@ def create_equity_chart(schedule: pd.DataFrame, home_value: Optional[float] = No
             y=equity,
             name='Equity',
             fill='tozeroy',
-            line=dict(color='#17becf', width=2),
+            line={'color': '#17becf', 'width': 2},
             fillcolor='rgba(23, 190, 207, 0.3)',
             hovertemplate='Month %{x}<br>Equity: $%{y:,.0f}<extra></extra>',
         ))
         fig.update_layout(
             yaxis_title='Equity ($)',
-            yaxis=dict(tickformat='$,.0f'),
+            yaxis={'tickformat': '$,.0f'},
         )
 
     fig.update_layout(
@@ -145,7 +144,7 @@ def create_refinance_break_even_chart(break_even_data: pd.DataFrame) -> go.Figur
         x=break_even_data['month'],
         y=break_even_data['current_cumulative'],
         name='Current Loan',
-        line=dict(color='#1f77b4', width=2),
+        line={'color': '#1f77b4', 'width': 2},
         hovertemplate='Month %{x}<br>Cumulative: $%{y:,.0f}<extra></extra>',
     ))
 
@@ -153,12 +152,12 @@ def create_refinance_break_even_chart(break_even_data: pd.DataFrame) -> go.Figur
         x=break_even_data['month'],
         y=break_even_data['new_cumulative'],
         name='Refinanced Loan',
-        line=dict(color='#2ca02c', width=2),
+        line={'color': '#2ca02c', 'width': 2},
         hovertemplate='Month %{x}<br>Cumulative: $%{y:,.0f}<extra></extra>',
     ))
 
     # Find break-even point
-    for i, row in break_even_data.iterrows():
+    for _i, row in break_even_data.iterrows():
         if row['savings'] > 0:
             break_even_month = row['month']
             fig.add_vline(
@@ -174,13 +173,13 @@ def create_refinance_break_even_chart(break_even_data: pd.DataFrame) -> go.Figur
         xaxis_title='Month',
         yaxis_title='Cumulative Payments ($)',
         hovermode='x unified',
-        yaxis=dict(tickformat='$,.0f'),
-        legend=dict(
-            yanchor='top',
-            y=0.99,
-            xanchor='left',
-            x=0.01,
-        ),
+        yaxis={'tickformat': '$,.0f'},
+        legend={
+            'yanchor': 'top',
+            'y': 0.99,
+            'xanchor': 'left',
+            'x': 0.01,
+        },
     )
 
     return fig
@@ -198,7 +197,7 @@ def create_payoff_comparison_chart(
         x=original_schedule['month'],
         y=original_schedule['balance'],
         name=labels[0],
-        line=dict(color='#1f77b4', width=2),
+        line={'color': '#1f77b4', 'width': 2},
         hovertemplate='Month %{x}<br>Balance: $%{y:,.0f}<extra></extra>',
     ))
 
@@ -206,7 +205,7 @@ def create_payoff_comparison_chart(
         x=modified_schedule['month'],
         y=modified_schedule['balance'],
         name=labels[1],
-        line=dict(color='#2ca02c', width=2),
+        line={'color': '#2ca02c', 'width': 2},
         hovertemplate='Month %{x}<br>Balance: $%{y:,.0f}<extra></extra>',
     ))
 
@@ -223,7 +222,7 @@ def create_payoff_comparison_chart(
         y=original_schedule['balance'].max() * 0.5,
         text=f'{months_saved} months saved',
         showarrow=False,
-        font=dict(size=14),
+        font={'size': 14},
     )
 
     fig.update_layout(
@@ -231,7 +230,7 @@ def create_payoff_comparison_chart(
         xaxis_title='Month',
         yaxis_title='Remaining Balance ($)',
         hovermode='x unified',
-        yaxis=dict(tickformat='$,.0f'),
+        yaxis={'tickformat': '$,.0f'},
     )
 
     return fig
@@ -247,7 +246,7 @@ def create_monte_carlo_fan_chart(fan_data: pd.DataFrame) -> go.Figure:
         y=list(fan_data['p95']) + list(fan_data['p5'][::-1]),
         fill='toself',
         fillcolor='rgba(31, 119, 180, 0.2)',
-        line=dict(width=0),
+        line={'width': 0},
         name='90% CI',
         hoverinfo='skip',
     ))
@@ -257,7 +256,7 @@ def create_monte_carlo_fan_chart(fan_data: pd.DataFrame) -> go.Figure:
         y=list(fan_data['p75']) + list(fan_data['p25'][::-1]),
         fill='toself',
         fillcolor='rgba(31, 119, 180, 0.4)',
-        line=dict(width=0),
+        line={'width': 0},
         name='50% CI',
         hoverinfo='skip',
     ))
@@ -267,7 +266,7 @@ def create_monte_carlo_fan_chart(fan_data: pd.DataFrame) -> go.Figure:
         x=fan_data['month'],
         y=fan_data['p50'],
         name='Median',
-        line=dict(color='#1f77b4', width=2),
+        line={'color': '#1f77b4', 'width': 2},
         hovertemplate='Month %{x}<br>Rate: %{y:.3%}<extra></extra>',
     ))
 
@@ -276,7 +275,7 @@ def create_monte_carlo_fan_chart(fan_data: pd.DataFrame) -> go.Figure:
         x=fan_data['month'],
         y=fan_data['mean'],
         name='Mean',
-        line=dict(color='#d62728', width=2, dash='dash'),
+        line={'color': '#d62728', 'width': 2, 'dash': 'dash'},
         hovertemplate='Month %{x}<br>Rate: %{y:.3%}<extra></extra>',
     ))
 
@@ -285,13 +284,13 @@ def create_monte_carlo_fan_chart(fan_data: pd.DataFrame) -> go.Figure:
         xaxis_title='Month',
         yaxis_title='Interest Rate',
         hovermode='x unified',
-        yaxis=dict(tickformat='.3%', range=[0, 0.10]),
-        legend=dict(
-            yanchor='top',
-            y=0.99,
-            xanchor='right',
-            x=0.99,
-        ),
+        yaxis={'tickformat': '.3%', 'range': [0, 0.10]},
+        legend={
+            'yanchor': 'top',
+            'y': 0.99,
+            'xanchor': 'right',
+            'x': 0.99,
+        },
     )
 
     return fig
@@ -333,7 +332,7 @@ def create_monte_carlo_histogram(
         xaxis_title=xlabel,
         yaxis_title='Count',
         showlegend=False,
-        xaxis=dict(tickformat='$,.0f'),
+        xaxis={'tickformat': '$,.0f'},
     )
 
     return fig
@@ -351,7 +350,7 @@ def create_arm_vs_fixed_comparison_chart(
         x=arm_schedule['month'],
         y=arm_schedule['payment'],
         name='ARM Payment',
-        line=dict(color='#ff7f0e', width=2),
+        line={'color': '#ff7f0e', 'width': 2},
         hovertemplate='Month %{x}<br>Payment: $%{y:,.2f}<extra></extra>',
     ))
 
@@ -359,7 +358,7 @@ def create_arm_vs_fixed_comparison_chart(
         x=fixed_schedule['month'],
         y=fixed_schedule['payment'],
         name='Fixed Payment',
-        line=dict(color='#1f77b4', width=2),
+        line={'color': '#1f77b4', 'width': 2},
         hovertemplate='Month %{x}<br>Payment: $%{y:,.2f}<extra></extra>',
     ))
 
@@ -368,7 +367,7 @@ def create_arm_vs_fixed_comparison_chart(
         x=arm_schedule['month'],
         y=arm_schedule['rate'] * 100,
         name='ARM Rate',
-        line=dict(color='#d62728', width=1, dash='dot'),
+        line={'color': '#d62728', 'width': 1, 'dash': 'dot'},
         yaxis='y2',
         hovertemplate='Month %{x}<br>Rate: %{y:.3f}%<extra></extra>',
     ))
@@ -376,24 +375,24 @@ def create_arm_vs_fixed_comparison_chart(
     fig.update_layout(
         title='ARM vs Fixed Rate Comparison',
         xaxis_title='Month',
-        yaxis=dict(
-            title='Monthly Payment ($)',
-            tickformat='$,.0f',
-        ),
-        yaxis2=dict(
-            title='Interest Rate (%)',
-            overlaying='y',
-            side='right',
-            tickformat='.3f',
-            range=[0, 10],
-        ),
+        yaxis={
+            'title': 'Monthly Payment ($)',
+            'tickformat': '$,.0f',
+        },
+        yaxis2={
+            'title': 'Interest Rate (%)',
+            'overlaying': 'y',
+            'side': 'right',
+            'tickformat': '.3f',
+            'range': [0, 10],
+        },
         hovermode='x unified',
-        legend=dict(
-            yanchor='top',
-            y=0.99,
-            xanchor='left',
-            x=0.01,
-        ),
+        legend={
+            'yanchor': 'top',
+            'y': 0.99,
+            'xanchor': 'left',
+            'x': 0.01,
+        },
     )
 
     return fig
@@ -457,13 +456,13 @@ def create_cost_distribution_comparison_chart(
         xaxis_title='Total Payments ($)',
         yaxis_title='Count',
         barmode='overlay',
-        xaxis=dict(tickformat='$,.0f'),
-        legend=dict(
-            yanchor='top',
-            y=0.99,
-            xanchor='right',
-            x=0.99,
-        ),
+        xaxis={'tickformat': '$,.0f'},
+        legend={
+            'yanchor': 'top',
+            'y': 0.99,
+            'xanchor': 'right',
+            'x': 0.99,
+        },
     )
 
     return fig
@@ -502,7 +501,7 @@ def create_cumulative_cost_fan_chart(
         y=list(arm_p95) + list(arm_p5[::-1]),
         fill='toself',
         fillcolor='rgba(31, 119, 180, 0.2)',
-        line=dict(width=0),
+        line={'width': 0},
         name='ARM 90% CI',
         hoverinfo='skip',
     ))
@@ -513,7 +512,7 @@ def create_cumulative_cost_fan_chart(
         y=list(arm_p75) + list(arm_p25[::-1]),
         fill='toself',
         fillcolor='rgba(31, 119, 180, 0.4)',
-        line=dict(width=0),
+        line={'width': 0},
         name='ARM 50% CI',
         hoverinfo='skip',
     ))
@@ -523,7 +522,7 @@ def create_cumulative_cost_fan_chart(
         x=months,
         y=arm_p50,
         name='ARM Median',
-        line=dict(color='#1f77b4', width=2),
+        line={'color': '#1f77b4', 'width': 2},
         hovertemplate='Month %{x}<br>ARM Cumulative: $%{y:,.0f}<extra></extra>',
     ))
 
@@ -533,7 +532,7 @@ def create_cumulative_cost_fan_chart(
         x=months,
         y=refi_median,
         name='Refinance Path',
-        line=dict(color='#2ca02c', width=2),
+        line={'color': '#2ca02c', 'width': 2},
         hovertemplate='Month %{x}<br>Refi Cumulative: $%{y:,.0f}<extra></extra>',
     ))
 
@@ -551,13 +550,13 @@ def create_cumulative_cost_fan_chart(
         xaxis_title='Month',
         yaxis_title='Cumulative Payments ($)',
         hovermode='x unified',
-        yaxis=dict(tickformat='$,.0f'),
-        legend=dict(
-            yanchor='top',
-            y=0.99,
-            xanchor='left',
-            x=0.01,
-        ),
+        yaxis={'tickformat': '$,.0f'},
+        legend={
+            'yanchor': 'top',
+            'y': 0.99,
+            'xanchor': 'left',
+            'x': 0.01,
+        },
     )
 
     return fig
@@ -582,10 +581,10 @@ def create_savings_waterfall_chart(
             points_cost,
             0,  # Total calculated automatically
         ],
-        connector=dict(line=dict(color='rgb(63, 63, 63)')),
-        decreasing=dict(marker=dict(color='#2ca02c')),
-        increasing=dict(marker=dict(color='#d62728')),
-        totals=dict(marker=dict(color='#1f77b4')),
+        connector={'line': {'color': 'rgb(63, 63, 63)'}},
+        decreasing={'marker': {'color': '#2ca02c'}},
+        increasing={'marker': {'color': '#d62728'}},
+        totals={'marker': {'color': '#1f77b4'}},
         textposition='outside',
         text=[
             f'${original_interest:,.0f}',
@@ -599,7 +598,7 @@ def create_savings_waterfall_chart(
     fig.update_layout(
         title='Refinance Savings Breakdown',
         showlegend=False,
-        yaxis=dict(tickformat='$,.0f'),
+        yaxis={'tickformat': '$,.0f'},
     )
 
     return fig

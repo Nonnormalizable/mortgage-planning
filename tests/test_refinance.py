@@ -1,13 +1,12 @@
 """Tests for refinance calculations."""
 
-import pytest
 from src.mortgage import Mortgage
 from src.refinance import (
     RefinanceScenario,
     calculate_refinance_comparison,
-    generate_break_even_chart_data,
-    find_optimal_refinance_rate,
     compare_multiple_refinance_options,
+    find_optimal_refinance_rate,
+    generate_break_even_chart_data,
 )
 
 
@@ -137,7 +136,7 @@ class TestCalculateRefinanceComparison:
             closing_costs=4000,
         )
 
-        result = calculate_refinance_comparison(current, 60, refinance)
+        calculate_refinance_comparison(current, 60, refinance)
 
         # Payment will likely be higher (shorter term)
         # But total interest should be much lower

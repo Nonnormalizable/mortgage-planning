@@ -1,9 +1,8 @@
 """Core mortgage and amortization calculations."""
 
-import numpy as np
-import pandas as pd
 from dataclasses import dataclass
-from typing import Optional
+
+import pandas as pd
 
 
 @dataclass
@@ -13,7 +12,7 @@ class Mortgage:
     principal: float
     annual_rate: float  # as decimal, e.g., 0.065 for 6.5%
     term_months: int
-    start_date: Optional[str] = None  # YYYY-MM format
+    start_date: str | None = None  # YYYY-MM format
 
     @property
     def monthly_rate(self) -> float:

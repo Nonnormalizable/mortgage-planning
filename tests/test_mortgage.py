@@ -1,8 +1,6 @@
 """Tests for core mortgage calculations."""
 
-import pytest
-import numpy as np
-from src.mortgage import Mortgage, calculate_monthly_payment, calculate_affordability
+from src.mortgage import Mortgage, calculate_affordability, calculate_monthly_payment
 
 
 class TestMortgage:
