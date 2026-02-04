@@ -562,6 +562,96 @@ def create_cumulative_cost_fan_chart(
     return fig
 
 
+def create_rate_history_chart(
+    historical_data: pd.DataFrame,
+    current_rate: float | None = None,
+    current_date: str | None = None,
+) -> go.Figure:
+    """Create interactive chart showing historical interest rates.
+
+    Args:
+        historical_data: DataFrame with 'date' and 'rate' columns
+        current_rate: Optional current rate to highlight
+        current_date: Optional current date string for annotation
+
+    Returns:
+        Plotly figure with rate history
+    """
+    fig = go.Figure()
+
+    # Convert dates for plotting
+    df = historical_data.copy()
+    df["date"] = pd.to_datetime(df["date"])
+
+    # Main rate line
+    fig.add_trace(go.Scatter(
+        x=df["date"],
+        y=df["rate"] * 100,  # Convert to percentage
+        name="Index Rate",
+        line={"color": "#1f77b4", "width": 2},
+        hovertemplate="Date: %{x|%Y-%m}<br>Rate: %{y:.2f}%<extra></extra>",
+    ))
+
+    # Add current rate marker if provided
+    if current_rate is not None:
+        latest_date = df["date"].max()
+        fig.add_trace(go.Scatter(
+            x=[latest_date],
+            y=[current_rate * 100],
+            mode="markers",
+            marker={"size": 12, "color": "#d62728", "symbol": "star"},
+            name=f"Current: {current_rate * 100:.2f}%",
+            hovertemplate=f"Current Rate: {current_rate * 100:.2f}%<extra></extra>",
+        ))
+
+    # Add major event annotations
+    events = [
+        ("1979-10", "Volcker Era\nBegins", 0.15),
+        ("1981-06", "Peak Rates\n~19%", 0.19),
+        ("2000-03", "Dot-com\nBubble", 0.065),
+        ("2008-09", "Financial\nCrisis", 0.02),
+        ("2020-03", "COVID-19\nPandemic", 0.005),
+        ("2022-03", "Fed Rate\nHikes Begin", 0.005),
+    ]
+
+    for event_date, event_name, y_pos in events:
+        event_dt = pd.to_datetime(event_date)
+        if event_dt >= df["date"].min() and event_dt <= df["date"].max():
+            fig.add_annotation(
+                x=event_dt,
+                y=y_pos * 100,
+                text=event_name,
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=1,
+                arrowcolor="#636363",
+                font={"size": 9, "color": "#636363"},
+                ax=0,
+                ay=-30,
+            )
+
+    fig.update_layout(
+        title="Historical Interest Rates (Fed Funds / SOFR)",
+        xaxis_title="Date",
+        yaxis_title="Interest Rate (%)",
+        hovermode="x unified",
+        yaxis={"tickformat": ".1f", "ticksuffix": "%"},
+        legend={
+            "yanchor": "top",
+            "y": 0.99,
+            "xanchor": "right",
+            "x": 0.99,
+        },
+        xaxis={
+            "rangeslider": {"visible": True},
+            "type": "date",
+        },
+    )
+
+    return fig
+
+
 def create_savings_waterfall_chart(
     original_interest: float,
     new_interest: float,

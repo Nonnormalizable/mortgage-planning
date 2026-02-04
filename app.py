@@ -13,6 +13,7 @@ from components.charts import (
     create_monte_carlo_histogram,
     create_payment_breakdown_chart,
     create_payoff_comparison_chart,
+    create_rate_history_chart,
     create_refinance_break_even_chart,
 )
 
@@ -44,6 +45,7 @@ from src.export import (
     mortgage_to_dict,
 )
 from src.monte_carlo import (
+    RateModel,
     calculate_simulation_statistics,
     compare_arm_vs_fixed_monte_carlo,
     generate_fan_chart_data,
@@ -92,6 +94,58 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+def _render_rate_context_widget() -> None:
+    """Render the market context widget in the sidebar."""
+    st.sidebar.markdown("### Market Context")
+
+    try:
+        from src.rates import get_rate_provider
+
+        provider = get_rate_provider()
+
+        # Try to get current rates
+        try:
+            sofr_rate, sofr_date = provider.get_current_sofr()
+            st.sidebar.metric(
+                "Current SOFR",
+                f"{sofr_rate * 100:.2f}%",
+                help=f"As of {sofr_date}",
+            )
+        except Exception:
+            st.sidebar.caption("SOFR: Unavailable")
+
+        try:
+            mortgage_rate, mortgage_date = provider.get_current_mortgage_rate()
+            st.sidebar.metric(
+                "30-Year Fixed",
+                f"{mortgage_rate * 100:.2f}%",
+                help=f"As of {mortgage_date}",
+            )
+        except Exception:
+            st.sidebar.caption("30-Year Fixed: Unavailable")
+
+        # Historical context
+        try:
+            stats = provider.get_rate_statistics()
+            st.sidebar.caption(
+                f"Historical Range: {stats['min'] * 100:.1f}% - {stats['max'] * 100:.1f}%"
+            )
+
+            # Current percentile
+            try:
+                current_sofr, _ = provider.get_current_sofr()
+                percentile = provider.get_current_rate_percentile(current_sofr)
+                st.sidebar.caption(f"Current vs Historical: {percentile:.0f}th percentile")
+            except Exception:
+                pass
+
+        except Exception:
+            pass
+
+    except Exception:
+        st.sidebar.caption("Rate data unavailable")
+
+
 def main():
     """Main application entry point."""
     st.title("🏠 Mortgage Planning & Refinancing Tool")
@@ -111,6 +165,11 @@ def main():
             "Data Management",
         ],
     )
+
+    st.sidebar.divider()
+
+    # Market Context Widget
+    _render_rate_context_widget()
 
     st.sidebar.divider()
 
@@ -509,7 +568,12 @@ def monte_carlo_page():
                     arm, fixed_rate / 100, sim_params
                 )
 
-            tab1, tab2, tab3 = st.tabs(["Rate Paths", "Cost Distribution", "ARM vs Fixed"])
+                # Store for history tab
+                st.session_state['mc_sim_params'] = sim_params
+
+            tab1, tab2, tab3, tab4 = st.tabs([
+                "Rate Paths", "Cost Distribution", "ARM vs Fixed", "Rate History"
+            ])
 
             with tab1:
                 st.subheader("Projected Interest Rate Paths")
@@ -517,11 +581,24 @@ def monte_carlo_page():
                 fig = create_monte_carlo_fan_chart(fan_data)
                 st.plotly_chart(fig, use_container_width=True)
 
-                st.markdown("""
-                The fan chart shows the range of possible rate paths:
-                - **Dark band**: 50% of simulations fall within this range
-                - **Light band**: 90% of simulations fall within this range
-                """)
+                # Show different description for historical model
+                if sim_params.model == RateModel.HISTORICAL:
+                    st.markdown(f"""
+                    **Historical Simulation Results:**
+                    Using actual rate history from {sim_params.historical_start_year or 1975}
+                    to {sim_params.historical_end_year or 2024}.
+
+                    - **Number of scenarios**: {rate_paths.shape[0]}
+                    - Each scenario represents a different starting year from history
+                    - **Dark band**: 50% of historical scenarios
+                    - **Light band**: 90% of historical scenarios
+                    """)
+                else:
+                    st.markdown("""
+                    The fan chart shows the range of possible rate paths:
+                    - **Dark band**: 50% of simulations fall within this range
+                    - **Light band**: 90% of simulations fall within this range
+                    """)
 
             with tab2:
                 st.subheader("Total Interest Distribution")
@@ -565,6 +642,47 @@ def monte_carlo_page():
                 - In the best 5% of scenarios, you save at least **${round(comparison['savings_p95'], -2):,.0f}** with the ARM.
                 - In the worst 5% of scenarios, the ARM costs **${round(-comparison['savings_p5'], -2):,.0f}** more than fixed.
                 """)
+
+            with tab4:
+                st.subheader("Historical Rate Context")
+                st.markdown("""
+                This chart shows the historical path of interest rates to provide context
+                for understanding rate simulation assumptions.
+                """)
+
+                try:
+                    from src.rates import get_rate_provider
+
+                    provider = get_rate_provider()
+                    historical_df = provider.get_historical_index_rates(1975, 2024)
+
+                    # Get current rate
+                    try:
+                        current_sofr, _ = provider.get_current_sofr()
+                    except Exception:
+                        current_sofr = None
+
+                    fig = create_rate_history_chart(historical_df, current_sofr)
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    # Summary statistics
+                    stats = provider.get_rate_statistics()
+                    col_a, col_b, col_c = st.columns(3)
+
+                    with col_a:
+                        st.metric("Historical Minimum", f"{stats['min'] * 100:.2f}%")
+                        st.metric("25th Percentile", f"{stats['p25'] * 100:.2f}%")
+
+                    with col_b:
+                        st.metric("Historical Average", f"{stats['mean'] * 100:.2f}%")
+                        st.metric("Median", f"{stats['median'] * 100:.2f}%")
+
+                    with col_c:
+                        st.metric("Historical Maximum", f"{stats['max'] * 100:.2f}%")
+                        st.metric("75th Percentile", f"{stats['p75'] * 100:.2f}%")
+
+                except Exception as e:
+                    st.warning(f"Unable to load historical rate data: {e}")
 
 
 def shotwell_refinance_page():

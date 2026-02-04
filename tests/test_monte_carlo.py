@@ -527,6 +527,92 @@ class TestBackwardCompatibility:
         assert params.jump_std == 0.005
 
 
+class TestHistoricalModel:
+    """Tests for Historical rate model."""
+
+    def test_historical_model_enum_exists(self):
+        """Test that HISTORICAL enum value exists."""
+        assert hasattr(RateModel, "HISTORICAL")
+        assert RateModel.HISTORICAL.value == "historical"
+
+    def test_rate_sim_params_historical_fields(self):
+        """Test that RateSimulationParams has historical fields."""
+        params = RateSimulationParams(
+            current_rate=0.04,
+            model=RateModel.HISTORICAL,
+            historical_start_year=1980,
+            historical_end_year=2020,
+        )
+
+        assert params.historical_start_year == 1980
+        assert params.historical_end_year == 2020
+
+    def test_historical_params_default_to_none(self):
+        """Test that historical params default to None."""
+        params = RateSimulationParams(current_rate=0.04)
+
+        assert params.historical_start_year is None
+        assert params.historical_end_year is None
+
+    def test_simulate_rate_paths_historical_uses_real_data(self):
+        """Test that historical model uses actual rate data."""
+        from datetime import date
+        from unittest.mock import MagicMock, patch
+
+        import pandas as pd
+
+        # Mock the rate provider
+        mock_provider = MagicMock()
+        mock_provider.get_historical_index_rates.return_value = pd.DataFrame({
+            "date": [date(2020, 1, 1) for _ in range(120)],  # 10 years of monthly data
+            "rate": [0.02 + 0.001 * i for i in range(120)],  # Increasing rates
+            "source": ["TEST"] * 120,
+        })
+
+        # Return 120 months of mock data
+        mock_rates = np.array([0.02 + 0.001 * i for i in range(120)])
+
+        # Patch at the source module where it's imported from
+        with patch("src.rates.get_rate_provider", return_value=mock_provider):
+            with patch("src.rates.resample_to_monthly", return_value=mock_rates):
+                params = RateSimulationParams(
+                    current_rate=0.04,
+                    model=RateModel.HISTORICAL,
+                    time_horizon_months=60,  # 5 year horizon
+                    historical_start_year=1975,
+                    historical_end_year=2024,
+                )
+
+                paths = simulate_rate_paths(params)
+
+                # Should have 60 paths (120 months - 60 month horizon)
+                assert paths.shape[0] == 60
+                assert paths.shape[1] == 60
+
+    def test_historical_model_paths_are_consecutive_windows(self):
+        """Test that historical paths are consecutive overlapping windows."""
+        from src.rates import generate_historical_rate_paths
+
+        # Create predictable test data
+        test_rates = np.array([0.01 * i for i in range(20)])  # 0.00 to 0.19
+
+        # Test the underlying function directly
+        paths = generate_historical_rate_paths(test_rates, time_horizon_months=5)
+
+        # Should have 15 paths (20 - 5)
+        assert paths.shape == (15, 5)
+
+        # First path should be first 5 values
+        np.testing.assert_array_almost_equal(
+            paths[0], [0.00, 0.01, 0.02, 0.03, 0.04]
+        )
+
+        # Second path should be next window
+        np.testing.assert_array_almost_equal(
+            paths[1], [0.01, 0.02, 0.03, 0.04, 0.05]
+        )
+
+
 class TestExportImportWithNewParams:
     """Tests for export/import with new parameters."""
 

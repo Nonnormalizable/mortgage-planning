@@ -400,6 +400,7 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
         "CIR (Cox-Ingersoll-Ross)",
         "Vasicek + Jumps",
         "Geometric Brownian Motion",
+        "Historical (Actual Rates)",
     ]
 
     # Callback to apply preset values to session state
@@ -534,12 +535,52 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
         jump_mean = 0.0025
         jump_std = 0.005
 
+    # Historical model parameters
+    historical_start_year = None
+    historical_end_year = None
+
+    if model == "Historical (Actual Rates)":
+        st.markdown("**Historical Data Range**")
+        st.info(
+            "Historical simulation uses actual rate movements from the past. "
+            "Each scenario is a different starting year from history."
+        )
+        col_h1, col_h2 = st.columns(2)
+
+        with col_h1:
+            historical_start_year = st.slider(
+                "Start Year",
+                min_value=1975,
+                max_value=2020,
+                value=1975,
+                key=f"{key_prefix}_hist_start",
+                help="Earliest year to include in historical data",
+            )
+
+        with col_h2:
+            historical_end_year = st.slider(
+                "End Year",
+                min_value=1980,
+                max_value=2024,
+                value=2024,
+                key=f"{key_prefix}_hist_end",
+                help="Latest year to include in historical data",
+            )
+
+        # Calculate and display number of simulations
+        years_available = historical_end_year - historical_start_year
+        st.caption(
+            f"Available data: {years_available} years ({historical_start_year}-{historical_end_year}). "
+            "Number of simulations depends on loan horizon."
+        )
+
     # Map model string to enum
     model_map = {
         "Vasicek (Mean-Reverting)": RateModel.VASICEK,
         "CIR (Cox-Ingersoll-Ross)": RateModel.CIR,
         "Vasicek + Jumps": RateModel.VASICEK_JUMP,
         "Geometric Brownian Motion": RateModel.GBM,
+        "Historical (Actual Rates)": RateModel.HISTORICAL,
     }
 
     return RateSimulationParams(
@@ -552,6 +593,8 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
         jump_mean=jump_mean / 100 if model == "Vasicek + Jumps" else 0.0025,
         jump_std=jump_std / 100 if model == "Vasicek + Jumps" else 0.005,
         num_simulations=num_sims,
+        historical_start_year=historical_start_year,
+        historical_end_year=historical_end_year,
     )
 
 

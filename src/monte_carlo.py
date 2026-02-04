@@ -15,6 +15,7 @@ class RateModel(Enum):
     VASICEK = "vasicek"  # Mean-reverting (Vasicek model)
     CIR = "cir"  # Cox-Ingersoll-Ross (naturally non-negative)
     VASICEK_JUMP = "vasicek_jump"  # Vasicek with jump diffusion
+    HISTORICAL = "historical"  # Uses actual historical rate data
 
 
 @dataclass
@@ -41,6 +42,10 @@ class RateSimulationParams:
     num_simulations: int = 300
     time_horizon_months: int = 360  # How far to simulate
     random_seed: int | None = None
+
+    # Historical simulation params (only used when model=HISTORICAL)
+    historical_start_year: int | None = None  # e.g., 1975 (earliest available)
+    historical_end_year: int | None = None  # e.g., 2024 (latest available)
 
 
 def simulate_rate_paths(params: RateSimulationParams) -> np.ndarray:
@@ -118,6 +123,28 @@ def simulate_rate_paths(params: RateSimulationParams) -> np.ndarray:
             diffusion = a * (b - r) * dt + sigma * dW[:, t]
             jumps = jump_counts[:, t] * jump_sizes[:, t]
             paths[:, t + 1] = np.maximum(0, r + diffusion + jumps)
+
+        return paths[:, 1:]  # Exclude initial rate
+
+    elif params.model == RateModel.HISTORICAL:
+        # Use actual historical rate data
+        from .rates import generate_historical_rate_paths, get_rate_provider, resample_to_monthly
+
+        provider = get_rate_provider()
+
+        # Fetch historical monthly rates
+        start_year = params.historical_start_year or 1975
+        end_year = params.historical_end_year or 2024
+
+        historical_df = provider.get_historical_index_rates(start_year, end_year)
+        monthly_rates = resample_to_monthly(historical_df)
+
+        # Generate overlapping windows from historical data
+        historical_paths = generate_historical_rate_paths(
+            monthly_rates, params.time_horizon_months
+        )
+
+        return historical_paths
 
     return paths[:, 1:]  # Exclude initial rate
 
