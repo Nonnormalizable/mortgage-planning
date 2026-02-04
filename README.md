@@ -102,6 +102,37 @@ python -m pytest -v
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+## Roadmap / Possible Enhancements
+
+Potential improvements for future development:
+
+### High Priority
+
+| Area | Description |
+|------|-------------|
+| **Test Coverage** | Add tests for `components/` (1,771 lines) and `src/export.py` (currently 0 tests) |
+| **Input Validation** | Add validation layer with user-friendly error messages |
+| **Affordability Calculator** | Expose existing `calculate_affordability()` function in UI |
+| **Sensitivity Analysis** | Expose existing `run_sensitivity_analysis()` in Monte Carlo page |
+
+### Medium Priority
+
+| Area | Description |
+|------|-------------|
+| **Component Documentation** | Add docstrings and type hints to `components/` |
+| **Form Refactoring** | Extract common patterns in `inputs.py` to reusable form builder |
+| **Session State** | Centralize Streamlit session state management |
+| **Biweekly Payments UI** | Add input form for biweekly payment option (logic exists in `payoff.py`) |
+
+### Nice to Have
+
+| Area | Description |
+|------|-------------|
+| **Export Formats** | Add CSV, Excel, PDF export options |
+| **Historical Rates** | Integrate API for current/historical mortgage rates |
+| **Scenario Comparison** | Side-by-side comparison of saved scenarios |
+| **Tax Impact Calculator** | Mortgage interest deduction calculations |
+
 ## Disclaimer
 
 This tool is for **educational purposes only**. It is not financial advice. Mortgage decisions involve many factors not modeled here. Always consult with qualified financial professionals before making mortgage decisions.
