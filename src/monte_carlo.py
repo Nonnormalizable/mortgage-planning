@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 from enum import Enum
 
 from .arm import ARMParameters, generate_arm_schedule
@@ -13,6 +13,8 @@ class RateModel(Enum):
     """Interest rate simulation models."""
     GBM = "gbm"  # Geometric Brownian Motion
     VASICEK = "vasicek"  # Mean-reverting (Vasicek model)
+    CIR = "cir"  # Cox-Ingersoll-Ross (naturally non-negative)
+    VASICEK_JUMP = "vasicek_jump"  # Vasicek with jump diffusion
 
 
 @dataclass
@@ -22,7 +24,7 @@ class RateSimulationParams:
     current_rate: float  # Current index rate (e.g., SOFR)
     model: RateModel = RateModel.VASICEK
 
-    # Vasicek parameters
+    # Vasicek/CIR parameters
     long_term_mean: float = 0.04  # Long-term average rate
     mean_reversion_speed: float = 0.1  # How fast rate reverts to mean
     volatility: float = 0.01  # Annual volatility
@@ -30,8 +32,13 @@ class RateSimulationParams:
     # GBM parameters (uses volatility from above)
     drift: float = 0.0  # Annual drift rate
 
+    # Jump-Diffusion parameters (for VASICEK_JUMP model)
+    jump_intensity: float = 0.5  # Expected jumps per year (λ)
+    jump_mean: float = 0.0025  # Average jump size (25bp)
+    jump_std: float = 0.005  # Jump size std dev (50bp)
+
     # Simulation settings
-    num_simulations: int = 1000
+    num_simulations: int = 300
     time_horizon_months: int = 360  # How far to simulate
     random_seed: Optional[int] = None
 
@@ -81,6 +88,36 @@ def simulate_rate_paths(params: RateSimulationParams) -> np.ndarray:
             r = paths[:, t]
             dr = mu * r * dt + sigma * r * dW[:, t]
             paths[:, t + 1] = np.maximum(0, r + dr)  # Floor at 0
+
+    elif params.model == RateModel.CIR:
+        # CIR model: dr = a(b - r)dt + σ√r·dW
+        # Volatility scales with sqrt(r), naturally ensuring non-negativity
+        a = params.mean_reversion_speed
+        b = params.long_term_mean
+        sigma = params.volatility
+
+        for t in range(n_months):
+            r = paths[:, t]
+            # Volatility scales with sqrt(r), ensuring non-negativity
+            dr = a * (b - r) * dt + sigma * np.sqrt(np.maximum(r, 0)) * dW[:, t]
+            paths[:, t + 1] = np.maximum(0, r + dr)
+
+    elif params.model == RateModel.VASICEK_JUMP:
+        # Vasicek + Jumps: dr = a(b - r)dt + σdW + J·dN
+        a = params.mean_reversion_speed
+        b = params.long_term_mean
+        sigma = params.volatility
+
+        # Generate Poisson jumps
+        lambda_monthly = params.jump_intensity / 12
+        jump_counts = np.random.poisson(lambda_monthly, (n_sims, n_months))
+        jump_sizes = np.random.normal(params.jump_mean, params.jump_std, (n_sims, n_months))
+
+        for t in range(n_months):
+            r = paths[:, t]
+            diffusion = a * (b - r) * dt + sigma * dW[:, t]
+            jumps = jump_counts[:, t] * jump_sizes[:, t]
+            paths[:, t + 1] = np.maximum(0, r + diffusion + jumps)
 
     return paths[:, 1:]  # Exclude initial rate
 
@@ -383,6 +420,44 @@ def simulate_arm_vs_refinance_monte_carlo(
         'rate_paths': rate_paths,
         'refinance_month': refinance_month,
     }
+
+
+def get_arm_schedule_for_simulation(
+    arm_params: ARMParameters,
+    rate_paths: np.ndarray,
+    simulation_index: int,
+) -> Tuple[pd.DataFrame, List[float]]:
+    """Regenerate ARM schedule for a specific simulation.
+
+    Args:
+        arm_params: ARM parameters for the loan
+        rate_paths: Array of shape (n_simulations, n_months) with rate paths
+        simulation_index: Index of the simulation to regenerate
+
+    Returns:
+        Tuple of (schedule DataFrame, list of index values used)
+    """
+    # Determine adjustment schedule
+    adjustments_needed = []
+    month = arm_params.initial_period_months + 1
+
+    while month <= arm_params.term_months:
+        adjustments_needed.append(month)
+        month += arm_params.adjustment_period_months
+
+    # Extract index values at adjustment points for this simulation
+    index_values = []
+    for adj_month in adjustments_needed:
+        if adj_month - 1 < rate_paths.shape[1]:
+            index_values.append(rate_paths[simulation_index, adj_month - 1])
+        else:
+            # Use last available rate
+            index_values.append(rate_paths[simulation_index, -1])
+
+    # Generate schedule for this rate path
+    schedule, _ = generate_arm_schedule(arm_params, index_values)
+
+    return schedule, index_values
 
 
 def run_sensitivity_analysis(

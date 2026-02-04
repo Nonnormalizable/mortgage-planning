@@ -26,6 +26,7 @@ from src.monte_carlo import (
     generate_fan_chart_data,
     compare_arm_vs_fixed_monte_carlo,
     simulate_arm_vs_refinance_monte_carlo,
+    get_arm_schedule_for_simulation,
 )
 from src.export import (
     Scenario,
@@ -55,6 +56,7 @@ from components.tables import (
     display_payoff_strategy_table,
     display_monte_carlo_stats,
     display_refinance_summary,
+    display_arm_vs_refi_schedule_comparison,
 )
 from components.charts import (
     create_amortization_chart,
@@ -148,6 +150,38 @@ def main():
         **Probabilistic simulation of future scenarios.**
 
         Runs thousands of simulations with random interest rate paths to show the range of possible outcomes. Results show confidence intervals (e.g., 90% of outcomes fall within this range) and percentiles.
+        """)
+    with st.sidebar.expander("MC Rate Models"):
+        st.markdown("""
+        **Vasicek**: Mean-reverting model for typical market conditions. Rates tend toward a long-term average.
+
+        **CIR**: Cox-Ingersoll-Ross model prevents negative rates. Good for low-rate environments.
+
+        **Vasicek + Jumps**: Captures sudden Fed moves or market shocks with discrete rate jumps.
+
+        **GBM**: Geometric Brownian Motion - random walk without mean reversion. Models extreme uncertainty.
+        """)
+    with st.sidebar.expander("MC Key Parameters"):
+        st.markdown("""
+        **Volatility**: 0.5-1% for stable markets, 1.5-2%+ for uncertain conditions.
+
+        **Long-term Mean**: Historical Fed Funds average ~4.6%. Current neutral rate estimate: 3-4%.
+
+        **Mean Reversion Speed**: 0.05-0.1 slow (5-10 years), 0.15-0.25 moderate, 0.3+ fast (1-2 years).
+
+        **Jump Intensity**: Expected jumps per year. 0.5-1.0 typical for Fed policy surprises.
+
+        **Jump Mean/Std**: Fed typically moves in 0.25% (25bp) increments.
+        """)
+    with st.sidebar.expander("Interpreting MC Results"):
+        st.markdown("""
+        **Fan Charts**: Dark band = 50% of outcomes, light band = 90%.
+
+        **Probability Thresholds**: >60% favorable, <40% unfavorable, 40-60% uncertain.
+
+        **Percentiles**: P5/P95 = extreme scenarios, P25/P75 = likely range.
+
+        **Caution**: Models assume historical patterns continue. Actual rates may differ from any model.
         """)
 
     # Route to appropriate page
@@ -516,28 +550,28 @@ def monte_carlo_page():
                 with col_a:
                     st.metric(
                         "Probability ARM Saves Money",
-                        f"{comparison['probability_arm_saves_money']:.3%}",
+                        f"{comparison['probability_arm_saves_money']:.0%}",
                     )
                     st.metric(
                         "Expected Savings with ARM",
-                        f"${comparison['expected_savings_with_arm']:,.2f}",
+                        f"${round(comparison['expected_savings_with_arm'], -2):,.0f}",
                     )
 
                 with col_b:
                     st.metric(
                         "ARM Max Payment (95th percentile)",
-                        f"${comparison['arm_max_payment_p95']:,.2f}",
+                        f"${round(comparison['arm_max_payment_p95'], -2):,.0f}",
                     )
                     st.metric(
                         "Fixed Payment",
-                        f"${comparison['fixed_payment']:,.2f}",
+                        f"${round(comparison['fixed_payment'], -2):,.0f}",
                     )
 
                 st.markdown(f"""
                 **Analysis Summary:**
-                - There is a **{comparison['probability_arm_saves_money']:.3%}** chance the ARM will cost less than the {fixed_rate}% fixed rate.
-                - In the best 5% of scenarios, you save at least **${comparison['savings_p95']:,.2f}** with the ARM.
-                - In the worst 5% of scenarios, the ARM costs **${-comparison['savings_p5']:,.2f}** more than fixed.
+                - There is a **{comparison['probability_arm_saves_money']:.0%}** chance the ARM will cost less than the {fixed_rate}% fixed rate.
+                - In the best 5% of scenarios, you save at least **${round(comparison['savings_p95'], -2):,.0f}** with the ARM.
+                - In the worst 5% of scenarios, the ARM costs **${round(-comparison['savings_p5'], -2):,.0f}** more than fixed.
                 """)
 
 
@@ -600,7 +634,7 @@ def shotwell_refinance_page():
         with col1:
             st.metric(
                 "Probability ARM Wins",
-                f"{results['arm_wins_probability']:.1%}",
+                f"{results['arm_wins_probability']:.0%}",
                 help="Probability that staying in the ARM costs less than refinancing",
             )
 
@@ -609,21 +643,21 @@ def shotwell_refinance_page():
             delta_color = "normal" if savings_val > 0 else "inverse"
             st.metric(
                 "Expected ARM Savings",
-                f"${savings_val:,.0f}",
+                f"${round(savings_val, -2):,.0f}",
                 help="Expected savings from staying in ARM vs refinancing (positive = ARM saves money)",
             )
 
         with col3:
             st.metric(
                 "ARM Max Payment (95th %ile)",
-                f"${results['arm_max_payment_p95']:,.2f}",
+                f"${round(results['arm_max_payment_p95'], -2):,.0f}",
                 help="95th percentile of maximum monthly ARM payment across simulations",
             )
 
         with col4:
             st.metric(
                 "Fixed Payment (after refi)",
-                f"${results['fixed_payment']:,.2f}",
+                f"${round(results['fixed_payment'], -2):,.0f}",
                 help="Monthly payment after refinancing to fixed rate",
             )
 
@@ -633,15 +667,15 @@ def shotwell_refinance_page():
 
         with col_arm:
             st.markdown("**ARM Total Cost Distribution**")
-            st.metric("Median", f"${results['arm_median_total']:,.0f}")
-            st.metric("5th Percentile (Best)", f"${results['arm_p5_total']:,.0f}")
-            st.metric("95th Percentile (Worst)", f"${results['arm_p95_total']:,.0f}")
+            st.metric("Median", f"${round(results['arm_median_total'], -2):,.0f}")
+            st.metric("5th Percentile (Best)", f"${round(results['arm_p5_total'], -2):,.0f}")
+            st.metric("95th Percentile (Worst)", f"${round(results['arm_p95_total'], -2):,.0f}")
 
         with col_refi:
             st.markdown("**Refinance Total Cost Distribution**")
-            st.metric("Median", f"${results['refi_median_total']:,.0f}")
-            st.metric("5th Percentile (Best)", f"${results['refi_p5_total']:,.0f}")
-            st.metric("95th Percentile (Worst)", f"${results['refi_p95_total']:,.0f}")
+            st.metric("Median", f"${round(results['refi_median_total'], -2):,.0f}")
+            st.metric("5th Percentile (Best)", f"${round(results['refi_p5_total'], -2):,.0f}")
+            st.metric("95th Percentile (Worst)", f"${round(results['refi_p95_total'], -2):,.0f}")
 
         st.divider()
 
@@ -680,17 +714,17 @@ def shotwell_refinance_page():
             outcome_text = f"""
             **Based on the simulation, staying in the ARM is more likely to cost less than refinancing.**
 
-            - There is a **{results['arm_wins_probability']:.1%}** probability that the ARM will have lower total costs.
-            - On average, the ARM is expected to save **${results['expected_arm_savings']:,.0f}** compared to refinancing.
-            - However, the ARM carries more uncertainty - in the worst 5% of scenarios, total costs could reach **${results['arm_p95_total']:,.0f}**.
+            - There is a **{results['arm_wins_probability']:.0%}** probability that the ARM will have lower total costs.
+            - On average, the ARM is expected to save **${round(results['expected_arm_savings'], -2):,.0f}** compared to refinancing.
+            - However, the ARM carries more uncertainty - in the worst 5% of scenarios, total costs could reach **${round(results['arm_p95_total'], -2):,.0f}**.
             """
         else:
             outcome_text = f"""
             **Based on the simulation, refinancing is more likely to cost less than staying in the ARM.**
 
-            - There is only a **{results['arm_wins_probability']:.1%}** probability that the ARM will have lower total costs.
-            - On average, refinancing is expected to save **${-results['expected_arm_savings']:,.0f}** compared to the ARM.
-            - Refinancing provides payment certainty with a fixed **${results['fixed_payment']:,.2f}/month** payment.
+            - There is only a **{results['arm_wins_probability']:.0%}** probability that the ARM will have lower total costs.
+            - On average, refinancing is expected to save **${round(-results['expected_arm_savings'], -2):,.0f}** compared to the ARM.
+            - Refinancing provides payment certainty with a fixed **${round(results['fixed_payment'], -2):,.0f}/month** payment.
             """
 
         st.info(outcome_text)
@@ -702,6 +736,82 @@ def shotwell_refinance_page():
         - Actual market conditions may differ from model assumptions
         - Consider your risk tolerance and financial flexibility when choosing between strategies
         """)
+
+        # Schedule table for a selected simulation
+        st.divider()
+        st.subheader("Detailed Schedule for Selected Simulation")
+
+        st.markdown("""
+        Explore the month-by-month comparison for a specific simulation.
+        Select by rank (1 = lowest ARM cost, N = highest ARM cost).
+        """)
+
+        # Sort simulations by ARM total cost
+        n_sims = len(results['arm_total_paid'])
+        sorted_indices = np.argsort(results['arm_total_paid'])
+
+        # Slider to select simulation by rank
+        selected_rank = st.slider(
+            "Select Simulation by Rank",
+            min_value=1,
+            max_value=n_sims,
+            value=n_sims // 2,  # Default to median
+            key="shotwell_sim_rank",
+            help="1 = lowest ARM cost (best case), N = highest ARM cost (worst case)",
+        )
+
+        # Get the simulation index for this rank
+        sim_idx = sorted_indices[selected_rank - 1]
+
+        # Show metrics for selected simulation
+        col_sel1, col_sel2, col_sel3 = st.columns(3)
+        with col_sel1:
+            st.metric(
+                "Selected Rank",
+                f"#{selected_rank} of {n_sims}",
+                help="Rank among all simulations by ARM total cost",
+            )
+        with col_sel2:
+            st.metric(
+                "ARM Total Cost",
+                f"${results['arm_total_paid'][sim_idx]:,.0f}",
+            )
+        with col_sel3:
+            st.metric(
+                "Refi Total Cost",
+                f"${results['refi_total_paid'][sim_idx]:,.0f}",
+            )
+
+        # Regenerate ARM schedule for this simulation
+        arm_schedule, _ = get_arm_schedule_for_simulation(
+            arm, results['rate_paths'], sim_idx
+        )
+
+        # Generate fixed schedule for the refinance path
+        from src.mortgage import Mortgage
+        # Get balance at refinance month from ARM schedule
+        if refi_params['refinance_month'] > 1:
+            refi_balance = arm_schedule[
+                arm_schedule['month'] == refi_params['refinance_month'] - 1
+            ]['balance'].values[0]
+        else:
+            refi_balance = arm.principal
+
+        fixed_mortgage = Mortgage(
+            refi_balance,
+            refi_params['fixed_rate'],
+            refi_params['term_months']
+        )
+        fixed_schedule = fixed_mortgage.amortization_schedule()
+
+        # Display the comparison table
+        display_arm_vs_refi_schedule_comparison(
+            arm_schedule=arm_schedule,
+            fixed_schedule=fixed_schedule,
+            refinance_month=refi_params['refinance_month'],
+            refinance_costs=refi_params['refinance_costs'],
+            key_prefix="shotwell_schedule",
+        )
 
 
 def data_management_page():

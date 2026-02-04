@@ -372,6 +372,58 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
     """
     st.subheader("Rate Model Parameters")
 
+    # Define preset values
+    presets = {
+        "Stable Economy": {
+            "model": "CIR (Cox-Ingersoll-Ross)",
+            "long_term_mean": 4.0,
+            "mean_reversion": 0.15,
+            "volatility": 0.8,
+            "jump_intensity": 0.5,
+            "jump_mean": 0.0,
+            "jump_std": 0.5,
+        },
+        "Uncertain Economy": {
+            "model": "Vasicek + Jumps",
+            "long_term_mean": 4.5,
+            "mean_reversion": 0.1,
+            "volatility": 1.2,
+            "jump_intensity": 0.6,
+            "jump_mean": 0.0,
+            "jump_std": 0.5,
+        },
+    }
+
+    model_options = [
+        "Vasicek (Mean-Reverting)",
+        "CIR (Cox-Ingersoll-Ross)",
+        "Vasicek + Jumps",
+        "Geometric Brownian Motion",
+    ]
+
+    # Callback to apply preset values to session state
+    def apply_preset():
+        selected = st.session_state[f"{key_prefix}_preset"]
+        if selected in presets:
+            p = presets[selected]
+            st.session_state[f"{key_prefix}_model"] = p["model"]
+            st.session_state[f"{key_prefix}_ltm"] = p["long_term_mean"]
+            st.session_state[f"{key_prefix}_reversion"] = p["mean_reversion"]
+            st.session_state[f"{key_prefix}_volatility"] = p["volatility"]
+            st.session_state[f"{key_prefix}_jump_intensity"] = p["jump_intensity"]
+            st.session_state[f"{key_prefix}_jump_mean"] = p["jump_mean"]
+            st.session_state[f"{key_prefix}_jump_std"] = p["jump_std"]
+
+    # Presets dropdown with callback
+    preset = st.selectbox(
+        "Economic Preset",
+        options=["Custom", "Stable Economy", "Uncertain Economy"],
+        index=0,
+        key=f"{key_prefix}_preset",
+        on_change=apply_preset,
+        help="Quick configurations representing different economic views",
+    )
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -383,15 +435,15 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             step=0.25,
             format="%.3f",
             key=f"{key_prefix}_current_rate",
-            help="Current value of the rate index (e.g., SOFR)",
+            help="Current value of the rate index (e.g., SOFR). SOFR typically 4-5.5% (2024). Historical: 0-5.5% since 2018.",
         )
 
         model = st.selectbox(
             "Rate Model",
-            options=["Vasicek (Mean-Reverting)", "Geometric Brownian Motion"],
+            options=model_options,
             index=0,
             key=f"{key_prefix}_model",
-            help="Vasicek: rates tend to return to long-term average. GBM: rates follow random walk with drift.",
+            help="Vasicek: mean-reverting. CIR: naturally non-negative. Vasicek+Jumps: captures sudden Fed moves. GBM: random walk.",
         )
 
         volatility = st.number_input(
@@ -402,7 +454,7 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             step=0.1,
             format="%.3f",
             key=f"{key_prefix}_volatility",
-            help="Annual volatility of rate changes",
+            help="Annual volatility of rate changes. Typical: 0.5-1% stable, 1-1.5% moderate, 1.5-2%+ crisis.",
         )
 
     with col2:
@@ -414,7 +466,7 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             step=0.25,
             format="%.3f",
             key=f"{key_prefix}_ltm",
-            help="Rate that the model tends toward over time (Vasicek only)",
+            help="Rate that the model tends toward over time. Historical Fed Funds avg ~4.6%. Neutral estimate: 3-4%.",
         )
 
         mean_reversion = st.number_input(
@@ -425,23 +477,79 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             step=0.05,
             format="%.3f",
             key=f"{key_prefix}_reversion",
-            help="How quickly rates revert to mean (higher = faster). Vasicek only.",
+            help="How quickly rates revert to mean. 0.05-0.1 slow (5-10yr), 0.1-0.2 typical, 0.3+ fast (1-2yr).",
         )
 
         num_sims = st.selectbox(
             "Number of Simulations",
-            options=[100, 500, 1000, 5000],
-            index=2,
+            options=[100, 300, 500, 1000, 5000],
+            index=1,  # Default to 300
             key=f"{key_prefix}_nsims",
             help="More simulations = more accurate but slower",
         )
 
+    # Jump parameters (shown only for Vasicek + Jumps model)
+    if model == "Vasicek + Jumps":
+        st.markdown("**Jump Parameters**")
+        col_j1, col_j2, col_j3 = st.columns(3)
+
+        with col_j1:
+            jump_intensity = st.number_input(
+                "Jump Intensity (per year)",
+                min_value=0.1,
+                max_value=2.0,
+                value=0.5,
+                step=0.1,
+                format="%.2f",
+                key=f"{key_prefix}_jump_intensity",
+                help="Expected jumps per year. Typical: 0.3-1.0. Major Fed surprises ~0.5-1x per year.",
+            )
+
+        with col_j2:
+            jump_mean = st.number_input(
+                "Jump Mean (%)",
+                min_value=-1.0,
+                max_value=1.0,
+                value=0.0,
+                step=0.1,
+                format="%.2f",
+                key=f"{key_prefix}_jump_mean",
+                help="Average jump size. 0 = symmetric up/down. Fed moves typically 0.25% increments.",
+            )
+
+        with col_j3:
+            jump_std = st.number_input(
+                "Jump Std Dev (%)",
+                min_value=0.1,
+                max_value=1.0,
+                value=0.5,
+                step=0.1,
+                format="%.2f",
+                key=f"{key_prefix}_jump_std",
+                help="Standard deviation of jump sizes. 0.25-0.5% captures typical Fed moves (25-50bp).",
+            )
+    else:
+        jump_intensity = 0.5
+        jump_mean = 0.0025
+        jump_std = 0.005
+
+    # Map model string to enum
+    model_map = {
+        "Vasicek (Mean-Reverting)": RateModel.VASICEK,
+        "CIR (Cox-Ingersoll-Ross)": RateModel.CIR,
+        "Vasicek + Jumps": RateModel.VASICEK_JUMP,
+        "Geometric Brownian Motion": RateModel.GBM,
+    }
+
     return RateSimulationParams(
         current_rate=current_rate / 100,
-        model=RateModel.VASICEK if "Vasicek" in model else RateModel.GBM,
+        model=model_map.get(model, RateModel.VASICEK),
         long_term_mean=long_term_mean / 100,
         mean_reversion_speed=mean_reversion,
         volatility=volatility / 100,
+        jump_intensity=jump_intensity,
+        jump_mean=jump_mean / 100 if model == "Vasicek + Jumps" else 0.0025,
+        jump_std=jump_std / 100 if model == "Vasicek + Jumps" else 0.005,
         num_simulations=num_sims,
     )
 

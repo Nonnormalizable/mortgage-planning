@@ -198,6 +198,149 @@ def display_monte_carlo_stats(stats: pd.DataFrame) -> None:
     )
 
 
+def display_arm_vs_refi_schedule_comparison(
+    arm_schedule: pd.DataFrame,
+    fixed_schedule: pd.DataFrame,
+    refinance_month: int,
+    refinance_costs: float,
+    key_prefix: str = "arm_refi_schedule",
+) -> None:
+    """Display ARM vs Refinance schedule comparison table.
+
+    Args:
+        arm_schedule: ARM amortization schedule DataFrame
+        fixed_schedule: Fixed-rate mortgage schedule DataFrame
+        refinance_month: Month at which refinance occurs
+        refinance_costs: One-time refinancing costs
+        key_prefix: Unique key prefix for Streamlit widgets
+    """
+    st.subheader("ARM vs Refinance Schedule Comparison")
+
+    # View toggle
+    view_type = st.radio(
+        "View",
+        options=["Yearly Summary", "Monthly Detail"],
+        horizontal=True,
+        key=f"{key_prefix}_view",
+    )
+
+    # Build combined schedule
+    combined_rows = []
+    fixed_payment = fixed_schedule['payment'].iloc[0] if len(fixed_schedule) > 0 else 0
+    fixed_month_counter = 0
+    refi_balance = None
+
+    for _, arm_row in arm_schedule.iterrows():
+        month = int(arm_row['month'])
+        row = {
+            'month': month,
+            'arm_payment': arm_row['payment'],
+            'arm_balance': arm_row['balance'],
+            'arm_rate': arm_row['rate'],
+        }
+
+        if month < refinance_month:
+            # Before refinance - both paths same (ARM)
+            row['refi_payment'] = arm_row['payment']
+            row['refi_balance'] = arm_row['balance']
+        elif month == refinance_month:
+            # Refinance month - ARM balance becomes refi starting balance
+            refi_balance = arm_row['balance']
+            row['refi_payment'] = refinance_costs + fixed_payment
+            # After first fixed payment
+            if fixed_month_counter < len(fixed_schedule):
+                row['refi_balance'] = fixed_schedule.iloc[fixed_month_counter]['balance']
+                fixed_month_counter += 1
+            else:
+                row['refi_balance'] = 0
+        else:
+            # After refinance - use fixed schedule
+            if fixed_month_counter < len(fixed_schedule):
+                row['refi_payment'] = fixed_payment
+                row['refi_balance'] = fixed_schedule.iloc[fixed_month_counter]['balance']
+                fixed_month_counter += 1
+            else:
+                # Fixed mortgage paid off
+                row['refi_payment'] = 0
+                row['refi_balance'] = 0
+
+        combined_rows.append(row)
+
+    combined_df = pd.DataFrame(combined_rows)
+
+    if view_type == "Yearly Summary":
+        # Aggregate to yearly
+        combined_df['year'] = ((combined_df['month'] - 1) // 12) + 1
+
+        yearly = combined_df.groupby('year').agg({
+            'arm_payment': 'sum',
+            'arm_balance': 'last',
+            'arm_rate': 'last',
+            'refi_payment': 'sum',
+            'refi_balance': 'last',
+        }).reset_index()
+
+        yearly.columns = ['Year', 'ARM Payments', 'ARM Balance', 'ARM Rate', 'Refi Payments', 'Refi Balance']
+
+        # Format for display
+        display_df = yearly.copy()
+        display_df['ARM Payments'] = display_df['ARM Payments'].apply(lambda x: f"${x:,.0f}")
+        display_df['ARM Balance'] = display_df['ARM Balance'].apply(lambda x: f"${x:,.0f}")
+        display_df['ARM Rate'] = display_df['ARM Rate'].apply(lambda x: f"{x:.3%}")
+        display_df['Refi Payments'] = display_df['Refi Payments'].apply(lambda x: f"${x:,.0f}")
+        display_df['Refi Balance'] = display_df['Refi Balance'].apply(lambda x: f"${x:,.0f}")
+
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    else:
+        # Monthly detail with pagination
+        total_rows = len(combined_df)
+        max_rows = 60
+
+        if total_rows > max_rows:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                start_month = st.slider(
+                    "Start from month",
+                    min_value=1,
+                    max_value=total_rows - max_rows + 1,
+                    value=1,
+                    key=f"{key_prefix}_slider",
+                )
+            with col2:
+                st.write(f"Showing {max_rows} of {total_rows} months")
+
+            display_slice = combined_df.iloc[start_month - 1:start_month - 1 + max_rows].copy()
+        else:
+            display_slice = combined_df.copy()
+
+        # Rename and format
+        display_df = display_slice.rename(columns={
+            'month': 'Month',
+            'arm_payment': 'ARM Payment',
+            'arm_balance': 'ARM Balance',
+            'arm_rate': 'ARM Rate',
+            'refi_payment': 'Refi Payment',
+            'refi_balance': 'Refi Balance',
+        })
+
+        display_df['ARM Payment'] = display_df['ARM Payment'].apply(lambda x: f"${x:,.2f}")
+        display_df['ARM Balance'] = display_df['ARM Balance'].apply(lambda x: f"${x:,.0f}")
+        display_df['ARM Rate'] = display_df['ARM Rate'].apply(lambda x: f"{x:.3%}")
+        display_df['Refi Payment'] = display_df['Refi Payment'].apply(lambda x: f"${x:,.2f}")
+        display_df['Refi Balance'] = display_df['Refi Balance'].apply(lambda x: f"${x:,.0f}")
+
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
 def display_refinance_summary(comparison: dict) -> None:
     """Display refinance comparison summary as a formatted table."""
     st.subheader("Refinance Analysis Summary")
