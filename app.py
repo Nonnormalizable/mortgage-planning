@@ -613,6 +613,7 @@ def shotwell_refinance_page():
             refi_params = None
 
     # Results section
+    # Run simulation when button clicked and store in session state
     if arm and refi_params and run_comparison:
         with st.spinner("Running Monte Carlo simulation..."):
             # Run simulation
@@ -624,6 +625,16 @@ def shotwell_refinance_page():
                 refinance_costs=refi_params['refinance_costs'],
                 rate_sim_params=sim_params,
             )
+            # Store results in session state
+            st.session_state['shotwell_results'] = results
+            st.session_state['shotwell_arm'] = arm
+            st.session_state['shotwell_refi_params'] = refi_params
+
+    # Display results if available in session state
+    if 'shotwell_results' in st.session_state:
+        results = st.session_state['shotwell_results']
+        stored_arm = st.session_state['shotwell_arm']
+        stored_refi_params = st.session_state['shotwell_refi_params']
 
         st.divider()
 
@@ -784,23 +795,23 @@ def shotwell_refinance_page():
 
         # Regenerate ARM schedule for this simulation
         arm_schedule, _ = get_arm_schedule_for_simulation(
-            arm, results['rate_paths'], sim_idx
+            stored_arm, results['rate_paths'], sim_idx
         )
 
         # Generate fixed schedule for the refinance path
         from src.mortgage import Mortgage
         # Get balance at refinance month from ARM schedule
-        if refi_params['refinance_month'] > 1:
+        if stored_refi_params['refinance_month'] > 1:
             refi_balance = arm_schedule[
-                arm_schedule['month'] == refi_params['refinance_month'] - 1
+                arm_schedule['month'] == stored_refi_params['refinance_month'] - 1
             ]['balance'].values[0]
         else:
-            refi_balance = arm.principal
+            refi_balance = stored_arm.principal
 
         fixed_mortgage = Mortgage(
             refi_balance,
-            refi_params['fixed_rate'],
-            refi_params['term_months']
+            stored_refi_params['fixed_rate'],
+            stored_refi_params['term_months']
         )
         fixed_schedule = fixed_mortgage.amortization_schedule()
 
@@ -808,8 +819,8 @@ def shotwell_refinance_page():
         display_arm_vs_refi_schedule_comparison(
             arm_schedule=arm_schedule,
             fixed_schedule=fixed_schedule,
-            refinance_month=refi_params['refinance_month'],
-            refinance_costs=refi_params['refinance_costs'],
+            refinance_month=stored_refi_params['refinance_month'],
+            refinance_costs=stored_refi_params['refinance_costs'],
             key_prefix="shotwell_schedule",
         )
 
