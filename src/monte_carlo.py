@@ -177,7 +177,10 @@ def simulate_arm_outcomes(
         'avg_rate': [],
     }
 
-    for sim_idx in range(rate_sim_params.num_simulations):
+    # Use actual number of paths (may differ from num_simulations for Historical model)
+    n_simulations = rate_paths.shape[0]
+
+    for sim_idx in range(n_simulations):
         # Extract index values at adjustment points
         index_values = []
         for adj_month in adjustments_needed:
@@ -353,7 +356,10 @@ def simulate_arm_vs_refinance_monte_carlo(
     refi_cumulative_by_month = []
     arm_max_payments = []
 
-    for sim_idx in range(rate_sim_params.num_simulations):
+    # Use actual number of paths (may differ from num_simulations for Historical model)
+    n_simulations = rate_paths.shape[0]
+
+    for sim_idx in range(n_simulations):
         # Extract index values at adjustment points for this simulation
         index_values = []
         for adj_month in adjustments_needed:
