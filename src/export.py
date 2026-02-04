@@ -140,6 +140,9 @@ def rate_sim_params_to_dict(params: RateSimulationParams) -> dict:
         'mean_reversion_speed': params.mean_reversion_speed,
         'volatility': params.volatility,
         'drift': params.drift,
+        'jump_intensity': params.jump_intensity,
+        'jump_mean': params.jump_mean,
+        'jump_std': params.jump_std,
         'num_simulations': params.num_simulations,
         'time_horizon_months': params.time_horizon_months,
     }
@@ -154,7 +157,10 @@ def dict_to_rate_sim_params(data: dict) -> RateSimulationParams:
         mean_reversion_speed=data.get('mean_reversion_speed', 0.1),
         volatility=data.get('volatility', 0.01),
         drift=data.get('drift', 0.0),
-        num_simulations=data.get('num_simulations', 1000),
+        jump_intensity=data.get('jump_intensity', 0.5),
+        jump_mean=data.get('jump_mean', 0.0025),
+        jump_std=data.get('jump_std', 0.005),
+        num_simulations=data.get('num_simulations', 300),
         time_horizon_months=data.get('time_horizon_months', 360),
     )
 
