@@ -393,6 +393,9 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
             "jump_mean": 0.0,
             "jump_std": 0.5,
         },
+        "Historical": {
+            "model": "Historical (Actual Rates)",
+        },
     }
 
     model_options = [
@@ -409,17 +412,19 @@ def monte_carlo_input_form(key_prefix: str = "mc") -> RateSimulationParams:
         if selected in presets:
             p = presets[selected]
             st.session_state[f"{key_prefix}_model"] = p["model"]
-            st.session_state[f"{key_prefix}_ltm"] = p["long_term_mean"]
-            st.session_state[f"{key_prefix}_reversion"] = p["mean_reversion"]
-            st.session_state[f"{key_prefix}_volatility"] = p["volatility"]
-            st.session_state[f"{key_prefix}_jump_intensity"] = p["jump_intensity"]
-            st.session_state[f"{key_prefix}_jump_mean"] = p["jump_mean"]
-            st.session_state[f"{key_prefix}_jump_std"] = p["jump_std"]
+            # Only set synthetic model params if not Historical
+            if selected != "Historical":
+                st.session_state[f"{key_prefix}_ltm"] = p["long_term_mean"]
+                st.session_state[f"{key_prefix}_reversion"] = p["mean_reversion"]
+                st.session_state[f"{key_prefix}_volatility"] = p["volatility"]
+                st.session_state[f"{key_prefix}_jump_intensity"] = p["jump_intensity"]
+                st.session_state[f"{key_prefix}_jump_mean"] = p["jump_mean"]
+                st.session_state[f"{key_prefix}_jump_std"] = p["jump_std"]
 
     # Presets dropdown with callback
     st.selectbox(
         "Economic Preset",
-        options=["Custom", "Stable Economy", "Uncertain Economy"],
+        options=["Custom", "Stable Economy", "Uncertain Economy", "Historical"],
         index=0,
         key=f"{key_prefix}_preset",
         on_change=apply_preset,
